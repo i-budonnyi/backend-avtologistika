@@ -4,7 +4,7 @@ const jwt = require("jsonwebtoken");
 
 const JWT_SECRET = process.env.JWT_SECRET || "your_secret_key";
 
-// ✅ Функція для отримання user_id з JWT
+// ✅ Функція отримання user_id з JWT
 const getUserIdFromToken = (req) => {
     try {
         const authHeader = req.headers.authorization;
@@ -22,36 +22,10 @@ const getUserIdFromToken = (req) => {
     }
 };
 
-// ✅ Отримати всіх підписників запису (блог або ідея)
-const getSubscribers = async (req, res) => {
-    try {
-        const { entry_id } = req.params;
-        if (!entry_id) {
-            return res.status(400).json({ error: "Необхідно вказати entry_id (ID блогу або ідеї)." });
-        }
-
-        console.log(`[getSubscribers] 💬 Отримання підписників для запису ID ${entry_id}`);
-
-        const subscribers = await sequelize.query(
-            `SELECT u.id AS user_id, CONCAT(u.first_name, ' ', u.last_name) AS user_name
-             FROM subscriptions s
-             JOIN users u ON s.user_id = u.id
-             WHERE s.blog_id = :entry_id OR s.idea_id = :entry_id`,
-            { replacements: { entry_id }, type: QueryTypes.SELECT }
-        );
-
-        console.log(`[getSubscribers] ✅ Отримано ${subscribers.length} підписників.`);
-        res.status(200).json({ subscribersCount: subscribers.length, subscribers });
-    } catch (error) {
-        console.error("[getSubscribers] ❌ Помилка отримання підписників:", error);
-        res.status(500).json({ error: error.message });
-    }
-};
-
-// ✅ Отримати всі підписки конкретного користувача
+// ✅ Отримати всі підписки користувача
 const getSubscriptions = async (req, res) => {
     try {
-        const user_id = req.user?.user_id || getUserIdFromToken(req);
+        const user_id = getUserIdFromToken(req);
         if (!user_id) {
             return res.status(401).json({ error: "Необхідно авторизуватися." });
         }
@@ -59,12 +33,24 @@ const getSubscriptions = async (req, res) => {
         console.log(`[getSubscriptions] 💬 Отримання підписок для користувача ID ${user_id}`);
 
         const subscriptions = await sequelize.query(
-            `SELECT s.blog_id, s.idea_id, 
-                COALESCE(b.title, i.title) AS title,
-                CASE WHEN b.id IS NOT NULL THEN 'blog' ELSE 'idea' END AS type
+            `SELECT 
+                s.blog_id, s.idea_id, s.problem_id,
+                COALESCE(b.title, i.title, p.title) AS title,
+                COALESCE(b.description, i.description, p.description) AS description,
+                COALESCE(i.status, p.status, 'N/A') AS status, -- Переконуємось, що статус завжди є
+                CASE 
+                    WHEN s.blog_id IS NOT NULL THEN 'blog' 
+                    WHEN s.idea_id IS NOT NULL THEN 'idea' 
+                    WHEN s.problem_id IS NOT NULL THEN 'problem'
+                END AS type,
+                COALESCE(b.user_id, i.user_id, p.user_id) AS author_id,
+                u.first_name AS author_first_name,
+                u.last_name AS author_last_name
              FROM subscriptions s
              LEFT JOIN blog b ON s.blog_id = b.id
              LEFT JOIN ideas i ON s.idea_id = i.id
+             LEFT JOIN problems p ON s.problem_id = p.id
+             LEFT JOIN users u ON u.id = COALESCE(b.user_id, i.user_id, p.user_id) 
              WHERE s.user_id = :user_id`,
             { replacements: { user_id }, type: QueryTypes.SELECT }
         );
@@ -77,38 +63,38 @@ const getSubscriptions = async (req, res) => {
     }
 };
 
-// ✅ Підписатися на запис (блог або ідея)
+// ✅ Підписатися на запис (блог, ідея, проблема)
 const subscribeToEntry = async (req, res) => {
     try {
-        const { entry_id } = req.body;
-        const user_id = req.user?.user_id || getUserIdFromToken(req);
+        const { entry_id, entry_type } = req.body;
+        const user_id = getUserIdFromToken(req);
 
         if (!user_id) {
             return res.status(401).json({ error: "Необхідно авторизуватися." });
         }
 
-        if (!entry_id) {
-            return res.status(400).json({ error: "Необхідно вказати ID запису (блог або ідея)." });
+        if (!entry_id || !entry_type) {
+            return res.status(400).json({ error: "Необхідно вказати ID запису та його тип (blog, idea, problem)." });
         }
 
-        console.log(`[subscribeToEntry] 💬 Користувач ${user_id} підписується на запис ${entry_id}`);
+        console.log(`[subscribeToEntry] 💬 Користувач ${user_id} підписується на запис ${entry_id} (${entry_type})`);
 
-        // Перевіряємо, чи вже є підписка
+        let column = entry_type === "blog" ? "blog_id"
+                     : entry_type === "idea" ? "idea_id"
+                     : "problem_id";
+
         const existingSubscription = await sequelize.query(
-            `SELECT id FROM subscriptions WHERE user_id = :user_id AND (blog_id = :entry_id OR idea_id = :entry_id)`,
+            `SELECT id FROM subscriptions WHERE user_id = :user_id AND ${column} = :entry_id`,
             { replacements: { user_id, entry_id }, type: QueryTypes.SELECT }
         );
 
         if (existingSubscription.length) {
-            console.warn("[subscribeToEntry] ⚠️ Користувач вже підписаний.");
             return res.status(400).json({ error: "Ви вже підписані на цей запис." });
         }
 
-        // Додаємо підписку
         await sequelize.query(
-            `INSERT INTO subscriptions (user_id, blog_id, idea_id, created_at)
-             VALUES (:user_id, :blog_id, :idea_id, NOW())`,
-            { replacements: { user_id, blog_id: entry_id, idea_id: null }, type: QueryTypes.INSERT }
+            `INSERT INTO subscriptions (user_id, ${column}, created_at) VALUES (:user_id, :entry_id, NOW())`,
+            { replacements: { user_id, entry_id }, type: QueryTypes.INSERT }
         );
 
         console.log("[subscribeToEntry] ✅ Підписка додана.");
@@ -119,31 +105,30 @@ const subscribeToEntry = async (req, res) => {
     }
 };
 
-// ✅ Відписатися від запису (блог або ідея)
+// ✅ Відписатися від запису (блог, ідея, проблема)
 const unsubscribeFromEntry = async (req, res) => {
     try {
-        const { entry_id } = req.body;
-        const user_id = req.user?.user_id || getUserIdFromToken(req);
+        const { entry_id, entry_type } = req.body;
+        const user_id = getUserIdFromToken(req);
 
         if (!user_id) {
             return res.status(401).json({ error: "Необхідно авторизуватися." });
         }
 
-        if (!entry_id) {
-            return res.status(400).json({ error: "Необхідно вказати ID запису (блог або ідея)." });
+        if (!entry_id || !entry_type) {
+            return res.status(400).json({ error: "Необхідно вказати ID запису та його тип (blog, idea, problem)." });
         }
 
-        console.log(`[unsubscribeFromEntry] 💬 Користувач ${user_id} відписується від запису ${entry_id}`);
+        console.log(`[unsubscribeFromEntry] 💬 Користувач ${user_id} відписується від запису ${entry_id} (${entry_type})`);
 
-        // Видаляємо підписку
-        const result = await sequelize.query(
-            `DELETE FROM subscriptions WHERE user_id = :user_id AND (blog_id = :entry_id OR idea_id = :entry_id) RETURNING id`,
+        let column = entry_type === "blog" ? "blog_id"
+                     : entry_type === "idea" ? "idea_id"
+                     : "problem_id";
+
+        await sequelize.query(
+            `DELETE FROM subscriptions WHERE user_id = :user_id AND ${column} = :entry_id`,
             { replacements: { user_id, entry_id }, type: QueryTypes.DELETE }
         );
-
-        if (!result.length) {
-            return res.status(404).json({ error: "Ви не були підписані на цей запис." });
-        }
 
         console.log("[unsubscribeFromEntry] ✅ Підписка видалена.");
         res.status(200).json({ message: "Ви успішно відписалися." });
@@ -153,9 +138,8 @@ const unsubscribeFromEntry = async (req, res) => {
     }
 };
 
-// ✅ **Правильний експорт**
+// ✅ **Експорт**
 module.exports = {
-    getSubscribers,
     getSubscriptions,
     subscribeToEntry,
     unsubscribeFromEntry

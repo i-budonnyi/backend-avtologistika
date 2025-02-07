@@ -28,12 +28,13 @@ const authenticateUser = (req, res, next) => {
     }
 };
 
-// ✅ Отримати всі коментарі для конкретного запису (блогу або ідеї)
+// ✅ Отримати всі коментарі для конкретного запису (блог, ідея, проблема)
 const getCommentsByEntry = async (req, res) => {
     try {
         const { entry_id } = req.params;
+
         if (!entry_id) {
-            return res.status(400).json({ error: "Необхідно вказати entry_id (ID блогу або ідеї)." });
+            return res.status(400).json({ error: "Необхідно вказати entry_id (ID запису)." });
         }
 
         console.log(`[getCommentsByEntry] 💬 Отримання коментарів для запису ID ${entry_id}`);
@@ -44,12 +45,17 @@ const getCommentsByEntry = async (req, res) => {
                 c.comment AS text, 
                 c.created_at AS createdAt,
                 u.id AS authorId, 
-                CONCAT(u.first_name, ' ', u.last_name) AS authorName
+                CONCAT(u.first_name, ' ', u.last_name) AS authorName,
+                CASE 
+                    WHEN c.blog_id IS NOT NULL THEN 'blog'
+                    WHEN c.idea_id IS NOT NULL THEN 'idea'
+                    WHEN c.problem_id IS NOT NULL THEN 'problem'
+                END AS entry_type
             FROM comments c
             LEFT JOIN users u ON c.user_id = u.id
-            WHERE c.entry_id = :entryId
+            WHERE c.blog_id = :entry_id OR c.idea_id = :entry_id OR c.problem_id = :entry_id
             ORDER BY c.created_at DESC`,
-            { replacements: { entryId: entry_id }, type: QueryTypes.SELECT }
+            { replacements: { entry_id }, type: QueryTypes.SELECT }
         );
 
         console.log(`[getCommentsByEntry] ✅ Отримано ${comments.length} коментарів.`);
@@ -63,24 +69,24 @@ const getCommentsByEntry = async (req, res) => {
 // ✅ Додати новий коментар
 const addComment = async (req, res) => {
     try {
-        const { entry_id, text } = req.body;
-        if (!entry_id || !text) {
-            return res.status(400).json({ error: "ID запису і текст коментаря обов'язкові." });
+        const { entry_id, entry_type, text } = req.body;
+        if (!entry_id || !entry_type || !text) {
+            return res.status(400).json({ error: "ID запису, його тип і текст коментаря обов'язкові." });
         }
 
         const user_id = req.user.user_id;
 
-        console.log(`[addComment] 💬 Додавання коментаря... User ID: ${user_id}, Entry ID: ${entry_id}`);
+        console.log(`[addComment] 💬 Додавання коментаря... User ID: ${user_id}, Entry ID: ${entry_id}, Type: ${entry_type}`);
+
+        let column = entry_type === "blog" ? "blog_id"
+                    : entry_type === "idea" ? "idea_id"
+                    : "problem_id";
 
         await sequelize.query(
-            `INSERT INTO comments (entry_id, user_id, comment, created_at)
-            VALUES (:entryId, :userId, :text, NOW())`,
+            `INSERT INTO comments (${column}, user_id, comment, created_at)
+            VALUES (:entry_id, :user_id, :text, NOW())`,
             {
-                replacements: {
-                    entryId: entry_id,
-                    userId: user_id,
-                    text,
-                },
+                replacements: { entry_id, user_id, text },
                 type: QueryTypes.INSERT,
             }
         );
@@ -102,8 +108,8 @@ const deleteComment = async (req, res) => {
         console.log(`[deleteComment] 🗑 Видалення коментаря ID ${id}...`);
 
         const [comment] = await sequelize.query(
-            `SELECT id, user_id FROM comments WHERE id = :commentId`,
-            { replacements: { commentId: id }, type: QueryTypes.SELECT }
+            `SELECT id, user_id FROM comments WHERE id = :comment_id`,
+            { replacements: { comment_id: id }, type: QueryTypes.SELECT }
         );
 
         if (!comment) {
@@ -117,8 +123,8 @@ const deleteComment = async (req, res) => {
         }
 
         await sequelize.query(
-            `DELETE FROM comments WHERE id = :commentId`,
-            { replacements: { commentId: id }, type: QueryTypes.DELETE }
+            `DELETE FROM comments WHERE id = :comment_id`,
+            { replacements: { comment_id: id }, type: QueryTypes.DELETE }
         );
 
         console.log("[deleteComment] ✅ Коментар успішно видалено.");

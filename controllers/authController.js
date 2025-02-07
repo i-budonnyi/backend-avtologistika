@@ -1,9 +1,10 @@
 ﻿const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
-const UserRoles = require("../models/UserRoles"); // Модель для роботи з таблицею користувачів
+const { Sequelize } = require("sequelize");
+const sequelize = require("../config/database");
 const JWT_SECRET = process.env.JWT_SECRET || "your_secret_key";
 
-// Функція для логування всіх дій
+// Функція логування
 const log = (level, message, details = {}) => {
   const timestamp = new Date().toISOString();
   console[level](`[${timestamp}] ${message}`);
@@ -12,129 +13,90 @@ const log = (level, message, details = {}) => {
   }
 };
 
-// Функція для генерації токена
+// Генерація токена
 const generateToken = (user) => {
-  return jwt.sign(
-    {
-      user_id: user.id,
-      role_id: user.role_id,
-    },
-    JWT_SECRET,
-    { expiresIn: "5h" } // Термін дії токена встановлено на 5 годин
-  );
+  return jwt.sign({ id: user.id, first_name: user.first_name, last_name: user.last_name, email: user.email, phone: user.phone }, JWT_SECRET, { expiresIn: "5h" });
 };
 
 // Реєстрація користувача
 const register = async (req, res) => {
-  log("info", "Отримано запит на реєстрацію", {
-    method: req.method,
-    url: req.originalUrl,
-    ip: req.ip,
-    body: req.body,
-  });
-
+  log("info", "📌 Отримано запит на реєстрацію", { email: req.body.email });
+  const t = await sequelize.transaction();
   try {
-    const { first_name, last_name, email, password, phone, role_id } = req.body;
-
-    if (!first_name || !last_name || !email || !password || !phone || !role_id) {
-      log("warn", "Не всі поля заповнені", req.body);
+    const { first_name, last_name, email, password, phone } = req.body;
+    if (!first_name || !last_name || !email || !password || !phone) {
       return res.status(400).json({ message: "Заповніть всі поля" });
     }
-
-    log("info", "Перевірка, чи існує користувач із таким email", { email });
-    const existingUser = await UserRoles.findOne({ where: { email } });
-
-    if (existingUser) {
-      log("warn", "Користувач із таким email вже існує", { email });
+    
+    const existingUser = await sequelize.query(
+      `SELECT id FROM users WHERE email = ? LIMIT 1`,
+      { replacements: [email], type: Sequelize.QueryTypes.SELECT }
+    );
+    if (existingUser.length > 0) {
       return res.status(400).json({ message: "Користувач з таким email вже існує" });
     }
 
-    log("info", "Хешування пароля");
     const hashedPassword = await bcrypt.hash(password, 10);
+    const [newUser] = await sequelize.query(
+      `INSERT INTO users (first_name, last_name, email, password, phone) 
+      VALUES (?, ?, ?, ?, ?) RETURNING id, first_name, last_name, email, phone`,
+      { replacements: [first_name, last_name, email, hashedPassword, phone], transaction: t }
+    );
 
-    log("info", "Створення нового користувача", { first_name, last_name, email });
-    const newUser = await UserRoles.create({
-      first_name,
-      last_name,
-      email,
-      password: hashedPassword,
-      phone,
-      role_id,
-    });
-
-    log("info", "Користувач успішно зареєстрований", { id: newUser.id, email: newUser.email });
-
-    return res.status(201).json({
-      message: "Користувач успішно зареєстрований",
-      user: { id: newUser.id, email: newUser.email, role_id: newUser.role_id },
-    });
+    await t.commit();
+    log("info", "✅ Користувач успішно зареєстрований", { id: newUser.id, email });
+    return res.status(201).json({ message: "Користувач успішно зареєстрований", user: newUser });
   } catch (error) {
-    log("error", "Помилка під час реєстрації", { message: error.message, stack: error.stack });
-    return res.status(500).json({ message: "Помилка сервера", error: error.message });
+    await t.rollback();
+    log("error", "❌ Помилка при реєстрації", { message: error.message });
+    return res.status(500).json({ message: "Помилка сервера" });
   }
 };
 
-// Вхід користувача
+// Вхід користувача (без ролі, тільки з таблиці users)
 const login = async (req, res) => {
-  log("info", "Отримано запит на вхід", {
-    method: req.method,
-    url: req.originalUrl,
-    ip: req.ip,
-    body: req.body,
-  });
-
+  log("info", "📌 Отримано запит на вхід", { email: req.body.email });
   try {
     const { email, password } = req.body;
-
     if (!email || !password) {
-      log("warn", "Не всі поля заповнені", { email, password });
-      return res.status(400).json({ message: "Заповніть всі поля" });
+      return res.status(400).json({ message: "Введіть email і пароль" });
+    }
+    
+    const users = await sequelize.query(
+      `SELECT id, first_name, last_name, email, phone, password FROM users WHERE email = ? LIMIT 1;`,
+      { replacements: [email], type: Sequelize.QueryTypes.SELECT }
+    );
+
+    if (users.length === 0) {
+      return res.status(404).json({ message: "Користувача не знайдено або немає доступу" });
     }
 
-    log("info", "Пошук користувача за email", { email });
-    const user = await UserRoles.findOne({ where: { email } });
-
-    if (!user) {
-      log("warn", "Користувача не знайдено", { email });
-      return res.status(404).json({ message: "Користувача не знайдено" });
-    }
-
-    log("info", "Перевірка пароля для користувача", { email });
+    const user = users[0];
+    
     const isPasswordValid = await bcrypt.compare(password, user.password);
-
     if (!isPasswordValid) {
-      log("warn", "Невірний пароль", { email });
       return res.status(401).json({ message: "Невірний пароль" });
     }
 
-    log("info", "Генерація JWT токена для користувача", { user_id: user.id, role_id: user.role_id });
+    delete user.password; // Видаляємо пароль перед збереженням у токен
+
+    log("info", "✅ Генерація JWT токена для користувача", { userId: user.id });
     const token = generateToken(user);
-
-    log("info", "Вхід успішний", { user_id: user.id, email: user.email });
-
-    return res.status(200).json({
-      message: "Вхід успішний",
-      token,
-      user: { id: user.id, email: user.email, role_id: user.role_id },
-    });
+    return res.status(200).json({ message: "Вхід успішний", token, user });
   } catch (error) {
-    log("error", "Помилка під час входу", { message: error.message, stack: error.stack });
-    return res.status(500).json({ message: "Помилка сервера", error: error.message });
+    log("error", "❌ Помилка при вході", { message: error.message });
+    return res.status(500).json({ message: "Помилка сервера" });
   }
 };
 
-// Обробка 404
+// Обробка неіснуючих маршрутів
 const notFound = (req, res) => {
-  log("warn", "Маршрут не знайдено", {
-    method: req.method,
-    url: req.originalUrl,
-    ip: req.ip,
-  });
   res.status(404).json({ message: "Маршрут не знайдено" });
 };
 
+// Експортуємо функції
 module.exports = {
   register,
   login,
-  notFound,
+  notFound
 };

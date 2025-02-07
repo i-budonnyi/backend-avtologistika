@@ -66,7 +66,7 @@ const getAllProblems = async (req, res) => {
   }
 };
 
-// ✅ Отримати проблеми конкретного користувача
+// ✅ Отримати проблеми конкретного користувача (ОНОВЛЕНО)
 const getUserProblems = async (req, res) => {
   try {
     if (!req.user || !req.user.user_id) {
@@ -78,13 +78,18 @@ const getUserProblems = async (req, res) => {
     console.log(`[PROBLEMS] 🔍 Отримання проблем для user_id = ${userId}`);
 
     const problems = await sequelize.query(
-      `SELECT * FROM problems WHERE user_id = :userId ORDER BY created_at DESC`,
+      `SELECT p.id, p.title, p.description, p.status,
+              u.first_name AS author_first_name, u.last_name AS author_last_name
+       FROM problems p
+       LEFT JOIN users u ON p.user_id = u.id
+       WHERE p.user_id = :userId
+       ORDER BY p.created_at DESC`,
       { replacements: { userId }, type: QueryTypes.SELECT }
     );
 
     if (!problems || problems.length === 0) {
       console.warn("[PROBLEMS] ⚠️ Користувач ще не подав жодної проблеми.");
-      return res.status(404).json({ message: "У вас ще немає поданих проблем." });
+      return res.status(200).json([]); // Повертаємо порожній масив, а не 404
     }
 
     console.log(`[PROBLEMS] ✅ Отримано ${problems.length} проблем.`);
@@ -105,7 +110,7 @@ const createProblem = async (req, res) => {
       return res.status(401).json({ message: "Авторизація потрібна." });
     }
 
-    const { ambassador_id, title, description } = req.body;
+    const { title, description, ambassador_id } = req.body;
     const user_id = req.user.user_id;
 
     await sequelize.query(
@@ -151,7 +156,7 @@ module.exports = {
   getAllProblems,
   getUserProblems,
   createProblem,
-  deleteProblem, // 🛠️ Переконайтесь, що функція правильно експортується
+  deleteProblem,
   getAllAmbassadors,
   authenticateUser,
 };
