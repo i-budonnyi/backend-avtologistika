@@ -106,4 +106,38 @@ fs.readdirSync(routesPath).forEach((file) => {
         console.error(`[ERROR] Файл ${file} не експортує коректний маршрут`);
       }
     } catch (error) {
-      console.error(`[ERROR] Неможливо підключити маршрут ${file}:`,
+      console.error(`[ERROR] Неможливо підключити маршрут ${file}:`, error.message);
+    }
+  }
+});
+
+// 🧾 Логування відповіді
+app.use((req, res, next) => {
+  const originalSend = res.send;
+  res.send = function (body) {
+    console.log(`[RESPONSE] Статус: ${res.statusCode}, Відповідь:`, body);
+    fs.appendFile(
+      "server.log",
+      `[${new Date().toISOString()}] Response Status: ${res.statusCode}, Body: ${JSON.stringify(body)}\n`,
+      (err) => {
+        if (err) console.error("Error writing log:", err.message);
+      }
+    );
+    originalSend.apply(res, arguments);
+  };
+  next();
+});
+
+// 🔌 Підключення до бази даних
+sequelize
+  .sync()
+  .then(() => console.log(`[DATABASE] Синхронізація бази даних успішна`))
+  .catch((error) => {
+    console.error(`[DATABASE] Помилка синхронізації:`, error.message);
+    process.exit(1);
+  });
+
+// 🚀 Запуск сервера
+app.listen(PORT, () => {
+  console.log(`[SERVER] Сервер запущено на порту ${PORT}`);
+});
