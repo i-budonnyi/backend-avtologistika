@@ -29,7 +29,7 @@ app.use((req, res, next) => {
   next();
 });
 
-// Логування запитів
+// 🔎 Логування запитів
 app.use((req, res, next) => {
   const log = `[${new Date().toISOString()}] Method: ${req.method}, URL: ${req.url}, IP: ${req.ip}`;
   console.log(log);
@@ -41,7 +41,7 @@ app.use((req, res, next) => {
   next();
 });
 
-// Middleware для перевірки токена
+// 🔐 Middleware для перевірки токена
 const authenticateToken = (req, res, next) => {
   const authHeader = req.headers.authorization;
   const token = authHeader && authHeader.split(" ")[1];
@@ -59,7 +59,7 @@ const authenticateToken = (req, res, next) => {
   });
 };
 
-// Контролер для отримання профілю користувача
+// 📄 Контролер для профілю
 const getUserProfile = async (req, res) => {
   const userId = req.user.id;
 
@@ -87,10 +87,10 @@ const getUserProfile = async (req, res) => {
   }
 };
 
-// Маршрут для отримання профілю користувача
+// ✅ Маршрут для профілю
 app.get("/api/profile", authenticateToken, getUserProfile);
 
-// ✅ Автоматичне підключення всіх роутів з папки routes
+// 📁 Автоматичне підключення роутів
 const routesPath = path.join(__dirname, "routes");
 fs.readdirSync(routesPath).forEach((file) => {
   if (file.endsWith(".js")) {
@@ -106,38 +106,4 @@ fs.readdirSync(routesPath).forEach((file) => {
         console.error(`[ERROR] Файл ${file} не експортує коректний маршрут`);
       }
     } catch (error) {
-      console.error(`[ERROR] Неможливо підключити маршрут ${file}:`, error.message);
-    }
-  }
-});
-
-// Логування відповіді
-app.use((req, res, next) => {
-  const originalSend = res.send;
-  res.send = function (body) {
-    console.log(`[RESPONSE] Статус: ${res.statusCode}, Відповідь:`, body);
-    fs.appendFile(
-      "server.log",
-      `[${new Date().toISOString()}] Response Status: ${res.statusCode}, Body: ${JSON.stringify(body)}\n`,
-      (err) => {
-        if (err) console.error("Error writing log:", err.message);
-      }
-    );
-    originalSend.apply(res, arguments);
-  };
-  next();
-});
-
-// Підключення до бази даних
-sequelize
-  .sync()
-  .then(() => console.log(`[DATABASE] Синхронізація бази даних успішна`))
-  .catch((error) => {
-    console.error(`[DATABASE] Помилка синхронізації:`, error.message);
-    process.exit(1);
-  });
-
-// ✅ Запуск сервера без хоста — Render сам підставить правильний
-app.listen(PORT, () => {
-  console.log(`[SERVER] Сервер запущено на порту ${PORT}`);
-});
+      console.error(`[ERROR] Неможливо підключити маршрут ${file}:`,
