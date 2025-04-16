@@ -9,8 +9,7 @@ const UserModel = require("./models/users");
 const UserRoleModel = require("./models/UserRoles");
 
 const app = express();
-const port = process.env.PORT || 5000;
-const host = "localhost"; // ✅ запустить сервер лише на localhost
+const PORT = process.env.PORT || 5000;
 const JWT_SECRET = process.env.JWT_SECRET || "your_secret_key";
 
 // ✅ CORS: дозволяємо localhost, Netlify та твій ngrok
@@ -138,7 +137,7 @@ sequelize
     process.exit(1);
   });
 
-// Запуск сервера
-app.listen(port, host, () => {
-  console.log(`[SERVER] Сервер запущено на http://${host}:${port}`);
+// ✅ Запуск сервера без хоста — Render сам підставить правильний
+app.listen(PORT, () => {
+  console.log(`[SERVER] Сервер запущено на порту ${PORT}`);
 });
