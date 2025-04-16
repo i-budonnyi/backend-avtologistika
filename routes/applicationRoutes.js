@@ -1,15 +1,24 @@
-﻿// routes/applicationRoutes.js
-const express = require("express");
+﻿const express = require("express");
 const router = express.Router();
 const applicationController = require("../controllers/applicationController");
+const authMiddleware = require("../middleware/authMiddleware"); // якщо потрібна авторизація
 
-// Створення заявки
-router.post("/", applicationController.createApplication);
+// ✅ Створення нової заявки (змінив "/submit" на "/")
+router.post("/", authMiddleware, applicationController.createApplication);
 
-// Отримання заявок для амбасадора
-router.get("/", applicationController.getApplicationsForAmbassador);
+// ✅ Отримання всіх заявок
+router.get("/", authMiddleware, applicationController.getAllApplications);
 
-// Оновлення заявки
-router.put("/:id", applicationController.updateApplication);
+// ✅ Отримання конкретної заявки за ID
+router.get("/:id", authMiddleware, applicationController.getApplicationById);
+
+// ✅ Оновлення заявки
+router.put("/:id", authMiddleware, applicationController.updateApplication);
+
+// ✅ Оновлення заявки з рішенням журі
+router.put("/:id/jury", authMiddleware, applicationController.updateApplicationByJury);
+
+// ✅ Видалення заявки
+router.delete("/:id", authMiddleware, applicationController.deleteApplication);
 
 module.exports = router;

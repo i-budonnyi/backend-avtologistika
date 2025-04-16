@@ -66,15 +66,15 @@ const getAllProblems = async (req, res) => {
   }
 };
 
-// ✅ Отримати проблеми конкретного користувача (ОНОВЛЕНО)
+// ✅ Отримати проблеми конкретного користувача
 const getUserProblems = async (req, res) => {
   try {
-    if (!req.user || !req.user.user_id) {
+    if (!req.user || !req.user.id) {
       console.error("[PROBLEMS] ❌ Не вдалося отримати user_id з req.user.");
       return res.status(401).json({ message: "Необхідно авторизуватися." });
     }
 
-    const userId = req.user.user_id;
+    const userId = req.user.id;
     console.log(`[PROBLEMS] 🔍 Отримання проблем для user_id = ${userId}`);
 
     const problems = await sequelize.query(
@@ -105,13 +105,13 @@ const createProblem = async (req, res) => {
   try {
     console.log("[createProblem] Запит на створення нової проблеми...");
 
-    if (!req.user || !req.user.user_id) {
+    if (!req.user || !req.user.id) {
       console.error("[createProblem] ❌ Не вдалося отримати user_id з req.user.");
       return res.status(401).json({ message: "Авторизація потрібна." });
     }
 
     const { title, description, ambassador_id } = req.body;
-    const user_id = req.user.user_id;
+    const user_id = req.user.id;
 
     await sequelize.query(
       `INSERT INTO problems (user_id, ambassador_id, title, description, status, created_at, updated_at)
@@ -151,12 +151,38 @@ const deleteProblem = async (req, res) => {
   }
 };
 
-// ✅ Експортуємо функції
+// ✅ Оновити статус проблеми
+const updateProblemStatus = async (req, res) => {
+  try {
+    console.log("[updateProblemStatus] 🔄 Оновлення статусу проблеми...");
+    const { id } = req.params;
+    const { status } = req.body;
+
+    if (!id || !status) {
+      console.error("[updateProblemStatus] ❌ Відсутні дані.");
+      return res.status(400).json({ message: "ID і статус обов'язкові." });
+    }
+
+    await sequelize.query(
+      `UPDATE problems SET status = :status WHERE id = :id`,
+      { replacements: { status, id }, type: QueryTypes.UPDATE }
+    );
+
+    console.log(`[updateProblemStatus] ✅ Статус проблеми ID=${id} оновлено.`);
+    res.status(200).json({ message: "Статус проблеми успішно оновлено." });
+  } catch (error) {
+    console.error("[updateProblemStatus] ❌ Помилка оновлення статусу:", error);
+    res.status(500).json({ message: "Помилка оновлення статусу", error: error.message });
+  }
+};
+
+// ✅ Експортуємо всі функції
 module.exports = {
   getAllProblems,
   getUserProblems,
   createProblem,
   deleteProblem,
+  updateProblemStatus, // 🔥 ДОДАНО! Тепер функція є у модулі
   getAllAmbassadors,
   authenticateUser,
 };

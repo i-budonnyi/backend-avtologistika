@@ -1,14 +1,13 @@
 ﻿const express = require("express");
 const router = express.Router();
 const {
-    getSubscribers,
     getSubscriptions,
     subscribeToEntry,
     unsubscribeFromEntry
-} = require("../controllers/subscriptionController"); // Переконайся, що шлях правильний
+} = require("../controllers/subscriptionController");
 
+// 🔥 Перевірка імпорту контролерів
 console.log("🔹 Перевірка імпорту subscriptionController:", {
-    getSubscribers: typeof getSubscribers,
     getSubscriptions: typeof getSubscriptions,
     subscribeToEntry: typeof subscribeToEntry,
     unsubscribeFromEntry: typeof unsubscribeFromEntry,
@@ -16,7 +15,6 @@ console.log("🔹 Перевірка імпорту subscriptionController:", {
 
 // 🔥 Якщо якась функція undefined — вивести помилку
 if (
-    typeof getSubscribers !== "function" ||
     typeof getSubscriptions !== "function" ||
     typeof subscribeToEntry !== "function" ||
     typeof unsubscribeFromEntry !== "function"
@@ -26,9 +24,8 @@ if (
 }
 
 // 🔥 Маршрути
-router.get("/subscribers/:entryId", getSubscribers);
-router.get("/subscriptions/:userId", getSubscriptions);
-router.post("/subscribe", subscribeToEntry);
-router.delete("/unsubscribe", unsubscribeFromEntry);
+router.get("/user-subscriptions", getSubscriptions); // ✅ Отримати всі підписки користувача
+router.post("/subscribe", subscribeToEntry); // ✅ Підписка на запис (блог, ідея, проблема)
+router.delete("/unsubscribe", unsubscribeFromEntry); // ✅ Відписка від запису
 
 module.exports = router;

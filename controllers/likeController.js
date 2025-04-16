@@ -1,4 +1,4 @@
-﻿const sequelize = require("../config/database"); // ✅ Виправлено імпорт
+﻿const sequelize = require("../config/database"); // ✅ Підключення до бази
 const { QueryTypes } = require("sequelize");
 const jwt = require("jsonwebtoken");
 
@@ -14,7 +14,6 @@ const getUserIdFromToken = (req) => {
         const decoded = jwt.verify(token, JWT_SECRET);
 
         console.log("[AUTH] 🔑 Декодований токен:", decoded);
-
         return decoded.user_id || decoded.id || null;
     } catch (error) {
         console.error("❌ Помилка декодування токена:", error.message);
@@ -25,7 +24,7 @@ const getUserIdFromToken = (req) => {
 // ✅ Додавання або видалення лайка
 const toggleLike = async (req, res) => {
     try {
-        const { blog_id, idea_id } = req.body;
+        const { entry_id, entry_type } = req.body;
         let user_id = req.user?.user_id || getUserIdFromToken(req);
 
         if (!user_id) {
@@ -33,31 +32,33 @@ const toggleLike = async (req, res) => {
             return res.status(401).json({ message: "Необхідно авторизуватися." });
         }
 
-        if (!blog_id && !idea_id) {
-            console.error("[toggleLike] ❌ Відсутній blog_id або idea_id");
-            return res.status(400).json({ message: "Необхідно передати blog_id або idea_id." });
+        if (!entry_id || !entry_type) {
+            console.error("[toggleLike] ❌ Відсутній entry_id або entry_type");
+            return res.status(400).json({ message: "Необхідно передати entry_id та entry_type." });
         }
 
-        console.log(`[toggleLike] 💬 blog_id = ${blog_id || "N/A"}, idea_id = ${idea_id || "N/A"}, user_id = ${user_id}`);
+        console.log(`[toggleLike] 💬 entry_id = ${entry_id}, entry_type = ${entry_type}, user_id = ${user_id}`);
 
-        // Перевіряємо чи лайк існує
+        const column = entry_type === "blog" ? "blog_id" : "idea_id";
+
+        // Перевіряємо, чи лайк вже існує
         const existingLike = await sequelize.query(
-            `SELECT id FROM likes WHERE user_id = :user_id AND (blog_id = :blog_id OR idea_id = :idea_id)`,
-            { replacements: { user_id, blog_id: blog_id || null, idea_id: idea_id || null }, type: QueryTypes.SELECT }
+            `SELECT id FROM likes WHERE user_id = :user_id AND ${column} = :entry_id`,
+            { replacements: { user_id, entry_id }, type: QueryTypes.SELECT }
         );
 
         if (existingLike.length) {
             await sequelize.query(
-                `DELETE FROM likes WHERE id = :like_id RETURNING *`,
+                `DELETE FROM likes WHERE id = :like_id`,
                 { replacements: { like_id: existingLike[0].id }, type: QueryTypes.DELETE }
             );
             console.log("[toggleLike] ✅ Лайк видалено.");
             return res.status(200).json({ liked: false, message: "Лайк видалено." });
         } else {
             await sequelize.query(
-                `INSERT INTO likes (user_id, blog_id, idea_id, created_at) 
-                 VALUES (:user_id, :blog_id, :idea_id, NOW()) RETURNING *`,
-                { replacements: { user_id, blog_id: blog_id || null, idea_id: idea_id || null }, type: QueryTypes.INSERT }
+                `INSERT INTO likes (user_id, ${column}, created_at) 
+                 VALUES (:user_id, :entry_id, NOW())`,
+                { replacements: { user_id, entry_id }, type: QueryTypes.INSERT }
             );
             console.log("[toggleLike] ✅ Лайк додано.");
             return res.status(201).json({ liked: true, message: "Лайк успішно додано." });
@@ -68,10 +69,12 @@ const toggleLike = async (req, res) => {
     }
 };
 
-// ✅ Отримання всіх лайків для блогу або ідеї
+// ✅ Отримання всіх лайків для конкретного запису
 const getLikesByEntryId = async (req, res) => {
     try {
         const { entry_id } = req.params;
+        let user_id = req.user?.user_id || getUserIdFromToken(req);
+
         if (!entry_id) {
             console.error("[getLikesByEntryId] ❌ Відсутній entry_id");
             return res.status(400).json({ message: "Необхідно вказати entry_id." });
@@ -87,8 +90,10 @@ const getLikesByEntryId = async (req, res) => {
             { replacements: { entry_id }, type: QueryTypes.SELECT }
         );
 
+        const userLiked = likes.some(like => like.user_id === user_id);
         console.log(`[getLikesByEntryId] ✅ Отримано ${likes.length} лайків.`);
-        res.status(200).json({ likesCount: likes.length, likedBy: likes });
+
+        res.status(200).json({ likesCount: likes.length, userLiked, likedBy: likes });
     } catch (error) {
         console.error("[getLikesByEntryId] ❌ Помилка:", error);
         res.status(500).json({ message: "Помилка сервера.", error: error.message });

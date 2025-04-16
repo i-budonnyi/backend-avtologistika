@@ -1,15 +1,15 @@
 ﻿const express = require("express");
-const { register, login, notFound } = require("../controllers/authController"); // Імпортуємо функції з контролера
+const { register, login, notFound } = require("../controllers/authController"); // Імпорт логіки
 
 const router = express.Router();
 
-// Маршрут для реєстрації
+// ✅ Реєстрація користувача
 router.post("/register", register);
 
-// Маршрут для входу
+// ✅ Вхід користувача
 router.post("/login", login);
 
-// Обробка неіснуючих маршрутів
+// ❌ Обробка неіснуючих маршрутів
 router.all("*", notFound);
 
 module.exports = router;

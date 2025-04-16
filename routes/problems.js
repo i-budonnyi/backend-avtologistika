@@ -9,7 +9,7 @@ const { authenticateUser } = problemsController;
 router.get("/", authenticateUser, problemsController.getAllProblems);
 
 // ✅ Отримати проблеми конкретного користувача
-router.get("/user", authenticateUser, problemsController.getUserProblems);
+router.get("/user-problems", authenticateUser, problemsController.getUserProblems);
 
 // ✅ Створити нову проблему
 router.post("/", authenticateUser, problemsController.createProblem);

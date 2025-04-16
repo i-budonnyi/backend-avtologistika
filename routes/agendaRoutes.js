@@ -1,17 +1,15 @@
-﻿// routes/agendaRoutes.js
-const express = require('express');
+﻿const express = require("express");
 const router = express.Router();
-const agendaController = require('../controllers/agendaController');
-const agendaItemController = require('../controllers/agendaItemController');
+const agendaController = require("../controllers/agendaController");
+const authenticate = require("../middleware/auth"); // Використовуємо твій метод автентифікації
 
-// Роутинг для Agenda
-router.post('/agenda', agendaController.createAgenda);
-router.get('/agenda', agendaController.getAgendas);
-router.put('/agenda/:id', agendaController.publishAgenda);
+// ✅ Створення порядку денного (лише для авторизованих користувачів)
+router.post("/create", authenticate, agendaController.createAgenda);
 
-// Роутинг для Agenda Items
-router.post('/agenda/items', agendaItemController.createAgendaItem);
-router.put('/agenda/items/:id', agendaItemController.updateAgendaItemStatus);
-router.get('/agenda/:agenda_id/items', agendaItemController.getAgendaItems);
+// ✅ Отримання всіх записів порядку денного (лише для авторизованих користувачів)
+router.get("/", authenticate, agendaController.getAllAgendas);
+
+// ✅ Отримання конкретного порядку денного за ID (лише для авторизованих користувачів)
+router.get("/:id", authenticate, agendaController.getAgendaById);
 
 module.exports = router;

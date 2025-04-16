@@ -1,71 +1,102 @@
-﻿const Secretaries = require('../models/Secretaries');
-const SecretaryPermissions = require('../models/SecretaryPermissions');
+﻿const { QueryTypes } = require("sequelize");
+const sequelize = require("../config/db"); // Підключення до БД
 
-// Створити нового секретаря
-exports.createSecretary = async (req, res) => {
+// ✅ Отримання конкретного секретаря за ID
+const getSecretaryById = async (req, res) => {
     try {
-        const { phone, email, first_name, last_name, photo } = req.body;
+        const secretaryId = parseInt(req.params.id, 10);
 
-        const secretary = await Secretaries.create({ phone, email, first_name, last_name, photo });
-        res.status(201).json({ message: 'Секретаря успішно створено', secretary });
-    } catch (error) {
-        console.error('Помилка при створенні секретаря:', error);
-        res.status(500).json({ message: 'Помилка сервера', error });
-    }
-};
-
-// Оновити дані секретаря
-exports.updateSecretary = async (req, res) => {
-    try {
-        const { id } = req.params;
-        const { phone, email, first_name, last_name, photo } = req.body;
-
-        const [updated] = await Secretaries.update(
-            { phone, email, first_name, last_name, photo },
-            { where: { id } }
-        );
-
-        if (!updated) return res.status(404).json({ message: 'Секретаря не знайдено' });
-
-        res.status(200).json({ message: 'Дані секретаря успішно оновлено' });
-    } catch (error) {
-        console.error('Помилка при оновленні даних секретаря:', error);
-        res.status(500).json({ message: 'Помилка сервера', error });
-    }
-};
-
-// Отримати список секретарів
-exports.getSecretaries = async (req, res) => {
-    try {
-        const secretaries = await Secretaries.findAll();
-        res.status(200).json(secretaries);
-    } catch (error) {
-        console.error('Помилка при отриманні списку секретарів:', error);
-        res.status(500).json({ message: 'Помилка сервера', error });
-    }
-};
-
-// Управління дозволами
-exports.managePermissions = async (req, res) => {
-    try {
-        const { secretary_id, permission_id } = req.body;
-
-        if (!secretary_id || !permission_id) {
-            return res.status(400).json({ message: 'Усі поля є обов’язковими' });
+        if (isNaN(secretaryId)) {
+            console.warn("[getSecretaryById] ❌ Некоректний ID секретаря");
+            return res.status(400).json({ message: "Некоректний ID секретаря" });
         }
 
-        await SecretaryPermissions.create({ secretary_id, permission_id });
-        res.status(201).json({ message: 'Дозвіл успішно додано' });
+        console.log(`[getSecretaryById] 🔍 Отримання секретаря ID=${secretaryId}`);
+
+        // Логування запиту для відлагодження
+        const secretary = await sequelize.query(
+            `SELECT id, phone, email, first_name, last_name, user_id, role
+             FROM secretaries WHERE id = :secretaryId LIMIT 1`,
+            {
+                replacements: { secretaryId },
+                type: QueryTypes.SELECT,
+            }
+        );
+
+        if (!secretary.length) {
+            console.warn(`[getSecretaryById] ❌ Секретаря не знайдено ID=${secretaryId}`);
+            return res.status(404).json({ message: "Секретаря не знайдено" });
+        }
+
+        console.log("[getSecretaryById] ✅ Секретар знайдено:", secretary[0]);
+        res.status(200).json(secretary[0]);
     } catch (error) {
-        console.error('Помилка при управлінні дозволами:', error);
-        res.status(500).json({ message: 'Помилка сервера', error });
+        console.error("[getSecretaryById] ❌ Помилка:", error);
+        res.status(500).json({ message: "Помилка отримання секретаря", error: error.message });
     }
 };
 
-// Експорт функцій
+
+// ✅ Отримання всіх секретарів
+const getAllSecretaries = async (req, res) => {
+    try {
+        console.log("[getAllSecretaries] 🔍 Отримання всіх секретарів");
+
+        const secretaries = await sequelize.query(
+            `SELECT id, phone, email, first_name, last_name, role FROM secretaries`,
+            { type: QueryTypes.SELECT }
+        );
+
+        if (!secretaries.length) {
+            console.warn("[getAllSecretaries] ⚠️ Немає секретарів у БД");
+            return res.status(200).json({ message: "Секретарів не знайдено" });
+        }
+
+        console.log(`[getAllSecretaries] ✅ Отримано ${secretaries.length} секретарів.`);
+        res.status(200).json(secretaries);
+    } catch (error) {
+        console.error("[getAllSecretaries] ❌ Помилка:", error);
+        res.status(500).json({ message: "Помилка отримання секретарів", error: error.message });
+    }
+};
+
+// ✅ Отримання заявок для секретаря
+const fetchApplicationsBySecretary = async (req, res) => {
+    try {
+        const secretaryId = parseInt(req.params.id, 10);
+
+        if (isNaN(secretaryId)) {
+            console.warn("[fetchApplicationsBySecretary] ❌ Некоректний ID секретаря");
+            return res.status(400).json({ message: "Некоректний ID секретаря" });
+        }
+
+        console.log(`[fetchApplicationsBySecretary] 🔍 Отримання заявок для секретаря ID=${secretaryId}`);
+
+        const applications = await sequelize.query(
+            `SELECT id, title, description, status, created_at 
+             FROM applications WHERE jury_secretary_id = :secretaryId`,
+            {
+                replacements: { secretaryId },
+                type: QueryTypes.SELECT,
+            }
+        );
+
+        if (!applications.length) {
+            console.warn(`[fetchApplicationsBySecretary] ⚠️ Немає заявок для секретаря ID=${secretaryId}`);
+            return res.status(200).json({ message: "Немає заявок" });
+        }
+
+        console.log(`[fetchApplicationsBySecretary] ✅ Отримано ${applications.length} заявок.`);
+        res.status(200).json(applications);
+    } catch (error) {
+        console.error("[fetchApplicationsBySecretary] ❌ Помилка:", error.message);
+        res.status(500).json({ message: "Помилка отримання заявок", error: error.message });
+    }
+};
+
+// ✅ Оновлений експорт
 module.exports = {
-    createSecretary,
-    updateSecretary,
-    getSecretaries,
-    managePermissions,
+    getSecretaryById,
+    getAllSecretaries,
+    fetchApplicationsBySecretary
 };

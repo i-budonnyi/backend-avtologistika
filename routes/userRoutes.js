@@ -1,15 +1,13 @@
 ﻿const express = require("express");
-const { getUserFromToken, logout } = require("../controllers/userController");
+const userController = require("../controllers/userController"); // імпортуємо як об'єкт
+const authMiddleware = require("../middleware/auth"); 
 
 const router = express.Router();
 
-// ❗ Додаємо маршрут, який використовує фронтенд
-router.get("/user-data", getUserFromToken);
+// Захист маршруту профілю
+router.get("/profile", authMiddleware, userController.getUserProfile);
 
-// Старий маршрут профілю (може бути видалений, якщо не використовується)
-router.get("/profile", getUserFromToken);
-
-// Маршрут для виходу
-router.post("/logout", logout);
+// Вихід
+router.post("/logout", userController.logout);
 
 module.exports = router;
