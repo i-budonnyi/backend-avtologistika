@@ -1,4 +1,4 @@
-﻿const express = require("express");
+const express = require("express");
 const cors = require("cors");
 const fs = require("fs");
 const path = require("path");
@@ -8,15 +8,13 @@ require("dotenv").config();
 const sequelize = require("./config/db");
 
 const app = express();
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 10000;
 const JWT_SECRET = process.env.JWT_SECRET || "your_secret_key";
 
 // ✅ CORS
 app.use(cors({
   origin: [
-    "http://localhost:8080",
-    "https://serene-fairy-1a0577.netlify.app",
-    "https://nearby-walrus-crucial.ngrok-free.app"
+    "https://leanavtologistika.netlify.app"
   ],
   methods: ["GET", "POST", "PUT", "DELETE"],
   allowedHeaders: ["Content-Type", "Authorization"]
