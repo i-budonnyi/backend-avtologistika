@@ -1,4 +1,4 @@
-﻿import { Op } from 'sequelize';
+import { Op } from 'sequelize';
 import Messages from '../models/Message.js'; // Імпорт моделі Message
 
 // Отримати всі повідомлення

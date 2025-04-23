@@ -1,4 +1,4 @@
-﻿const Problems = require('../models/Problems');
+const Problems = require('../models/Problems');
 
 // Створення нової проблеми
 exports.submitProblem = async (req, res) => {

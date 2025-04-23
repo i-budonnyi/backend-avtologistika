@@ -1,4 +1,4 @@
-﻿// models/application.js
+// models/application.js
 const { DataTypes } = require("sequelize");
 const sequelize = require("../config/database");
 const Ambassador = require("./ambassador");

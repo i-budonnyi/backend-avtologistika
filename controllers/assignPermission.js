@@ -1,4 +1,4 @@
-﻿const PmPermissionsAssignment = require('../models/PmPermissionsAssignment');
+const PmPermissionsAssignment = require('../models/PmPermissionsAssignment');
 
 // Призначення дозволу PM
 exports.assignPermission = async (req, res) => {

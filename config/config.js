@@ -1,18 +1,18 @@
-﻿require('dotenv').config();
+require('dotenv').config();
 
 module.exports = {
   development: {
-    username: process.env.DB_USER || 'postgres',
-    password: process.env.DB_PASSWORD || 'Pmzpolska2024',
-    database: process.env.DB_NAME || 'avtologistika',
-    host: process.env.DB_HOST || '192.168.0.116',
+    username: 'idea_user',
+    password: 'fK2W0gYFdKpMY2zRq5mVF4L97Kv4VkOy',
+    database: 'idea_backend_db',
+    host: 'dpg-cvvokdi4d50c739ja380-a',
     dialect: 'postgres',
   },
   production: {
-    username: process.env.DB_USER || 'postgres',
-    password: process.env.DB_PASSWORD || 'Pmzpolska2024',
-    database: process.env.DB_NAME || 'avtologistika',
-    host: process.env.DB_HOST || '192.168.0.116',
+    username: 'idea_user',
+    password: 'fK2W0gYFdKpMY2zRq5mVF4L97Kv4VkOy',
+    database: 'idea_backend_db',
+    host: 'dpg-cvvokdi4d50c739ja380-a',
     dialect: 'postgres',
   },
 };

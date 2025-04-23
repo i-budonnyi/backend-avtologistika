@@ -1,4 +1,4 @@
-﻿exports.getAllProblems = async (req, res) => {
+exports.getAllProblems = async (req, res) => {
     try {
         const problems = await Problems.findAll();
         res.status(200).json(problems);

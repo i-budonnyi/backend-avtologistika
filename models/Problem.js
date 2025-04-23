@@ -1,4 +1,4 @@
-﻿const Problem = sequelize.define('Problem', {
+const Problem = sequelize.define('Problem', {
     id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
     ideaId: { type: DataTypes.INTEGER, allowNull: false },
     severityLevel: { type: DataTypes.INTEGER, allowNull: false },

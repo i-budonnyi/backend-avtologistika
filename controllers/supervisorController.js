@@ -1,4 +1,4 @@
-﻿const SupervisorProjects = require('../models/SupervisorProjects');
+const SupervisorProjects = require('../models/SupervisorProjects');
 const Supervisors = require('../models/Supervisors');
 
 // Призначити супервізора

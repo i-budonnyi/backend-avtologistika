@@ -1,4 +1,4 @@
-﻿const { DataTypes, Model } = require("sequelize");
+const { DataTypes, Model } = require("sequelize");
 const sequelize = require("../config/database");
 
 class Ambassador extends Model {}

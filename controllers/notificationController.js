@@ -1,4 +1,4 @@
-﻿// ../controllers/notificationController.js
+// ../controllers/notificationController.js
 const createNotification = async (req, res) => {
     try {
         const { userId, message } = req.body;

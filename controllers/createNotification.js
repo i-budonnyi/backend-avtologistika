@@ -1,4 +1,4 @@
-﻿exports.createNotification = async (req, res) => {
+exports.createNotification = async (req, res) => {
     try {
         const { user_id, message, comment } = req.body;
 

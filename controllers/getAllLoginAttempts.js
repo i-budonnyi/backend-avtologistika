@@ -1,4 +1,4 @@
-﻿// Отримати список всіх спроб входу
+// Отримати список всіх спроб входу
 exports.getAllLoginAttempts = async (req, res) => {
     try {
         const loginAttempts = await LoginAttempt.findAll();

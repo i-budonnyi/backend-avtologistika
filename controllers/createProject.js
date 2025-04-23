@@ -1,4 +1,4 @@
-﻿const Projects = require('../models/Projects');
+const Projects = require('../models/Projects');
 const ProjectBudgets = require('../models/ProjectBudgets');
 
 // Створення проекту

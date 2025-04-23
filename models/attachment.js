@@ -1,4 +1,4 @@
-﻿// models/attachment.js
+// models/attachment.js
 const { DataTypes } = require("sequelize");
 const sequelize = require("../config/database");
 

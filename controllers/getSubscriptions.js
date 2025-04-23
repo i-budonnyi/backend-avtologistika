@@ -1,4 +1,4 @@
-﻿exports.getSubscriptions = async (req, res) => {
+exports.getSubscriptions = async (req, res) => {
     try {
         const user_id = req.user.id;
 

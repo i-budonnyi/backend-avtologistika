@@ -1,4 +1,4 @@
-﻿const { DataTypes } = require('sequelize');
+const { DataTypes } = require('sequelize');
 const sequelize = require('../config/db'); // Шлях до вашого файлу конфігурації бази даних
 
 const User = sequelize.define(

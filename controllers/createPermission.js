@@ -1,4 +1,4 @@
-﻿// Імпортуємо модель `Permissions`
+// Імпортуємо модель `Permissions`
 const Permissions = require('../models/Permissions');
 
 // Функція для створення нового дозволу

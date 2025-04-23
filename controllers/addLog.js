@@ -1,4 +1,4 @@
-﻿const PmLogs = require('../models/PmLogs');
+const PmLogs = require('../models/PmLogs');
 
 // Додавання нового запису в `pm_logs`
 exports.addLog = async (req, res) => {

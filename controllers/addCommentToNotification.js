@@ -1,4 +1,4 @@
-﻿exports.addCommentToNotification = async (req, res) => {
+exports.addCommentToNotification = async (req, res) => {
     try {
         const { id } = req.params;
         const { comment } = req.body;

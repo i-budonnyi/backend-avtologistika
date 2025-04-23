@@ -1,4 +1,4 @@
-﻿exports.updateProblemStatus = async (req, res) => {
+exports.updateProblemStatus = async (req, res) => {
     try {
         const { id } = req.params;
         const { status } = req.body;

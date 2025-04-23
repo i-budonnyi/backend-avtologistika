@@ -1,4 +1,4 @@
-﻿const db = require('../config/db'); // Правильний шлях до файлу db.js
+const db = require('../config/db'); // Правильний шлях до файлу db.js
 
 // Отримати всіх адміністраторів
 exports.getAllAdministrators = async (req, res) => {

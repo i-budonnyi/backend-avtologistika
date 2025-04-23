@@ -1,4 +1,4 @@
-﻿exports.updateNotificationStatus = async (req, res) => {
+exports.updateNotificationStatus = async (req, res) => {
     try {
         const { id } = req.params;
         const { status } = req.body;

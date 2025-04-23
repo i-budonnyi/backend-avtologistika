@@ -1,4 +1,4 @@
-﻿// Перевірка, чи користувач лайкнув запис
+// Перевірка, чи користувач лайкнув запис
 exports.checkUserLike = async (req, res) => {
     try {
         const { blog_id, user_id } = req.params;

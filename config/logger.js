@@ -1,4 +1,4 @@
-﻿// config/logger.js
+// config/logger.js
 const winston = require('winston');
 
 // Налаштування формату виведення логів

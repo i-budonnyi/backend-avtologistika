@@ -1,4 +1,4 @@
-﻿exports.getRoles = async (req, res) => {
+exports.getRoles = async (req, res) => {
     try {
         const roles = await Roles.findAll();
         res.status(200).json(roles);

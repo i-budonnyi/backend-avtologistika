@@ -1,4 +1,4 @@
-﻿const adminPermissionsModel = require('../models/adminPermissionsModel');
+const adminPermissionsModel = require('../models/adminPermissionsModel');
 
 // Отримати всі записи
 const getAllAdminPermissions = async (req, res) => {

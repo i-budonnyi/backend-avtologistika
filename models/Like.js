@@ -1,4 +1,4 @@
-﻿const { DataTypes } = require("sequelize");
+const { DataTypes } = require("sequelize");
 const sequelize = require("../config/database"); // ✅ Правильний імпорт
 
 const Like = sequelize.define(

@@ -1,4 +1,4 @@
-﻿const { QueryTypes } = require("sequelize");
+const { QueryTypes } = require("sequelize");
 const sequelize = require("../config/db"); // Підключення до БД
 
 const approvedProjectsController = {

@@ -1,4 +1,4 @@
-﻿const MediaFile = require('../models/MediaFile');
+const MediaFile = require('../models/MediaFile');
 
 // Створення публікації
 exports.createMediaFile = async (req, res) => {

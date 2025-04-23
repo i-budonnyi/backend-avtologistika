@@ -1,4 +1,4 @@
-﻿// Підрахунок лайків для запису блогу
+// Підрахунок лайків для запису блогу
 exports.getLikesCount = async (req, res) => {
     try {
         const { blog_id } = req.params;

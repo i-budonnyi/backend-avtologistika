@@ -1,4 +1,4 @@
-﻿// controllers/agendaItemController.js
+// controllers/agendaItemController.js
 const AgendaItem = require('../models/agendaItem');
 
 // Додавання пункту до порядку денного

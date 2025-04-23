@@ -1,4 +1,4 @@
-﻿const jwt = require("jsonwebtoken");
+const jwt = require("jsonwebtoken");
 const { QueryTypes } = require("sequelize");
 const sequelize = require("../config/database");
 

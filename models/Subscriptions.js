@@ -1,4 +1,4 @@
-﻿const Subscription = sequelize.define('Subscription', {
+const Subscription = sequelize.define('Subscription', {
     id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
     userId: { type: DataTypes.INTEGER, allowNull: false },
     ideaId: { type: DataTypes.INTEGER, allowNull: true },

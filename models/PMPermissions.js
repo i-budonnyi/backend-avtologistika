@@ -1,4 +1,4 @@
-﻿// Імпортуємо необхідні залежності
+// Імпортуємо необхідні залежності
 const { DataTypes } = require('sequelize');
 const sequelize = require('../config/db');
 

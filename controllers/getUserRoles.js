@@ -1,4 +1,4 @@
-﻿exports.getUserRoles = async (req, res) => {
+exports.getUserRoles = async (req, res) => {
     try {
         const { id } = req.params;
 

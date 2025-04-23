@@ -1,4 +1,4 @@
-﻿// models/agendaItem.js
+// models/agendaItem.js
 const { Sequelize, DataTypes } = require('sequelize');
 const sequelize = require('../config/database');
 

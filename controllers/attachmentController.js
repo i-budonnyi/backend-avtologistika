@@ -1,4 +1,4 @@
-﻿// controllers/attachmentController.js
+// controllers/attachmentController.js
 const Attachment = require("../models/attachment");
 const multer = require("multer");
 const path = require("path");

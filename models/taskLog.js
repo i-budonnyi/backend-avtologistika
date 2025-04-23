@@ -1,4 +1,4 @@
-﻿const { Sequelize, DataTypes, Model } = require('sequelize');
+const { Sequelize, DataTypes, Model } = require('sequelize');
 const sequelize = require('../config/database');
 
 class TaskLog extends Model {}

@@ -1,4 +1,4 @@
-﻿const JuryMember = require('../models/JuryMember');
+const JuryMember = require('../models/JuryMember');
 
 // Додати нового члена журі
 exports.addJuryMember = async (req, res) => {

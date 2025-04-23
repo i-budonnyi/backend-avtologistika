@@ -1,4 +1,4 @@
-﻿// Отримати рішення для проєкту
+// Отримати рішення для проєкту
 exports.getDecisionsForProject = async (req, res) => {
     try {
         const { project_id } = req.params;

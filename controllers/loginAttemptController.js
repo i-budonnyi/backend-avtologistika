@@ -1,4 +1,4 @@
-﻿const LoginAttempt = require('../models/LoginAttempt');
+const LoginAttempt = require('../models/LoginAttempt');
 
 // Додати запис про спробу входу
 const addLoginAttempt = async (req, res) => {

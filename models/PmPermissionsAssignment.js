@@ -1,4 +1,4 @@
-﻿// Модель для таблиці `pm_permissions_assignment`
+// Модель для таблиці `pm_permissions_assignment`
 const PmPermissionsAssignment = sequelize.define('PmPermissionsAssignment', {
     pm_id: {
         type: DataTypes.INTEGER,

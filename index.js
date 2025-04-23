@@ -4,15 +4,14 @@ const fs = require("fs");
 const path = require("path");
 const jwt = require("jsonwebtoken");
 require("dotenv").config();
+
 const sequelize = require("./config/db");
-const UserModel = require("./models/users");
-const UserRoleModel = require("./models/UserRoles");
 
 const app = express();
 const PORT = process.env.PORT || 5000;
 const JWT_SECRET = process.env.JWT_SECRET || "your_secret_key";
 
-// ✅ CORS: дозволяємо localhost, Netlify та твій ngrok
+// ✅ CORS
 app.use(cors({
   origin: [
     "http://localhost:8080",
@@ -23,13 +22,16 @@ app.use(cors({
   allowedHeaders: ["Content-Type", "Authorization"]
 }));
 
+// ✅ JSON parser
 app.use(express.json());
+
+// ✅ Content-Type
 app.use((req, res, next) => {
   res.setHeader("Content-Type", "application/json; charset=utf-8");
   next();
 });
 
-// 🔎 Логування запитів
+// 🔍 Логування запитів
 app.use((req, res, next) => {
   const log = `[${new Date().toISOString()}] Method: ${req.method}, URL: ${req.url}, IP: ${req.ip}`;
   console.log(log);
@@ -41,77 +43,38 @@ app.use((req, res, next) => {
   next();
 });
 
-// 🔐 Middleware для перевірки токена
+// 🔐 Middleware: перевірка токена
 const authenticateToken = (req, res, next) => {
   const authHeader = req.headers.authorization;
   const token = authHeader && authHeader.split(" ")[1];
 
-  if (!token) {
-    return res.status(401).json({ message: "Access token required" });
-  }
+  if (!token) return res.status(401).json({ message: "Access token required" });
 
   jwt.verify(token, JWT_SECRET, (err, user) => {
-    if (err) {
-      return res.status(403).json({ message: "Invalid token" });
-    }
+    if (err) return res.status(403).json({ message: "Invalid token" });
     req.user = user;
     next();
   });
 };
 
-// 📄 Контролер для профілю
-const getUserProfile = async (req, res) => {
-  const userId = req.user.id;
-
-  try {
-    const user = await UserModel.findByPk(userId);
-
-    if (!user) {
-      return res.status(404).json({ message: "User not found" });
-    }
-
-    const userRole = await UserRoleModel.findOne({ where: { user_id: userId } });
-
-    return res.status(200).json({
-      user: {
-        id: user.id,
-        firstName: user.first_name,
-        lastName: user.last_name,
-        phone: user.phone,
-        email: user.email,
-        role: userRole ? userRole.role_id : null,
-      },
-    });
-  } catch (error) {
-    return res.status(500).json({ message: "Internal server error", error: error.message });
-  }
-};
-
-// ✅ Маршрут для профілю
-app.get("/api/profile", authenticateToken, getUserProfile);
-
-// 📁 Автоматичне підключення роутів
-const routesPath = path.join(__dirname, "routes");
-fs.readdirSync(routesPath).forEach((file) => {
+// 📁 Автоматичне підключення роутів з папки /routes
+const routesDir = path.join(__dirname, "routes");
+fs.readdirSync(routesDir).forEach((file) => {
   if (file.endsWith(".js")) {
-    try {
-      const routePath = path.join(routesPath, file);
-      const route = require(routePath);
+    const filePath = path.join(routesDir, file);
+    const router = require(filePath);
 
-      if (route && Object.getPrototypeOf(route) === express.Router) {
-        const routeName = file === "index.js" ? "" : file.replace(".js", "");
-        app.use(`/api/${routeName}`, route);
-        console.log(`[ROUTES] Підключено маршрут: /api/${routeName}`);
-      } else {
-        console.error(`[ERROR] Файл ${file} не експортує коректний маршрут`);
-      }
-    } catch (error) {
-      console.error(`[ERROR] Неможливо підключити маршрут ${file}:`, error.message);
+    if (typeof router === "function" && router.stack) {
+      const routeBase = file === "index.js" ? "/" : `/${file.replace(".js", "")}`;
+      app.use(`/api${routeBase}`, router);
+      console.log(`[ROUTES] Підключено: /api${routeBase}`);
+    } else {
+      console.warn(`[ROUTES] Пропущено ${file} — не express.Router`);
     }
   }
 });
 
-// 🧾 Логування відповіді
+// 📦 Логування відповіді
 app.use((req, res, next) => {
   const originalSend = res.send;
   res.send = function (body) {
@@ -128,12 +91,12 @@ app.use((req, res, next) => {
   next();
 });
 
-// 🔌 Підключення до бази даних
+// 🔌 Підключення до бази
 sequelize
-  .sync()
-  .then(() => console.log(`[DATABASE] Синхронізація бази даних успішна`))
+  .authenticate()
+  .then(() => console.log(`[DATABASE] Підключення успішне`))
   .catch((error) => {
-    console.error(`[DATABASE] Помилка синхронізації:`, error.message);
+    console.error(`[DATABASE] Помилка підключення:`, error.message);
     process.exit(1);
   });
 

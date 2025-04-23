@@ -1,4 +1,4 @@
-﻿const JuryDecision = require('../models/JuryDecision');
+const JuryDecision = require('../models/JuryDecision');
 const JuryLog = require('../models/JuryLog');
 
 // Додати рішення журі

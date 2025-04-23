@@ -1,4 +1,4 @@
-﻿const sequelize = require("../config/database");
+const sequelize = require("../config/database");
 const { QueryTypes } = require("sequelize");
 
 // ✅ Додати новий коментар

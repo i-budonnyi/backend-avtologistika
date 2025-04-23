@@ -1,4 +1,4 @@
-﻿exports.unsubscribe = async (req, res) => {
+exports.unsubscribe = async (req, res) => {
     try {
         const { id } = req.params;
         const user_id = req.user.id;

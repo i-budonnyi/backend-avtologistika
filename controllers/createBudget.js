@@ -1,4 +1,4 @@
-﻿// Створення бюджету проекту
+// Створення бюджету проекту
 exports.createBudget = async (req, res) => {
     try {
         const { project_id, treasurer_id, allocated_amount, description } = req.body;

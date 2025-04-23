@@ -1,4 +1,4 @@
-﻿const pool = require('../config/db'); // Підключення до бази даних
+const pool = require('../config/db'); // Підключення до бази даних
 
 // Модель для роботи з таблицею admin_permissions
 const getAllAdminPermissions = async () => {

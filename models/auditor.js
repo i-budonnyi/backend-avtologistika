@@ -1,4 +1,4 @@
-﻿// models/auditor.js
+// models/auditor.js
 const { DataTypes } = require("sequelize");
 const sequelize = require("../config/database");
 

@@ -1,4 +1,4 @@
-﻿const jwt = require("jsonwebtoken");
+const jwt = require("jsonwebtoken");
 const sequelize = require("../config/database"); // ✅ Правильний імпорт
 const { QueryTypes } = require("sequelize");
 

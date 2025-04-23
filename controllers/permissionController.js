@@ -1,4 +1,4 @@
-﻿const PmPermissions = require('../models/PmPermissions');
+const PmPermissions = require('../models/PmPermissions');
 
 exports.getPermissions = async (req, res) => {
     try {

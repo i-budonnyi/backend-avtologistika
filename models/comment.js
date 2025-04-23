@@ -1,4 +1,4 @@
-﻿const Comment = sequelize.define('Comment', {
+const Comment = sequelize.define('Comment', {
     id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
     userId: { type: DataTypes.INTEGER, allowNull: false },
     ideaId: { type: DataTypes.INTEGER, allowNull: true },

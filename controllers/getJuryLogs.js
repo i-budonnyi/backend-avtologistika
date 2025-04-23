@@ -1,4 +1,4 @@
-﻿const JuryMember = require('../models/JuryMember');
+const JuryMember = require('../models/JuryMember');
 
 // Отримати логи для журі
 exports.getJuryLogs = async (req, res) => {

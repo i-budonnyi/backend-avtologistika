@@ -1,4 +1,4 @@
-﻿// controllers/blogPostController.js
+// controllers/blogPostController.js
 const BlogPost = require("../models/blogPost");
 
 // Створення посту

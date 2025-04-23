@@ -1,4 +1,4 @@
-﻿const JiraTask = require('../models/jira_task');
+const JiraTask = require('../models/jira_task');
 
 // Отримати всі завдання
 const getAllTasks = async (req, res) => {

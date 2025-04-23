@@ -1,4 +1,4 @@
-﻿// Отримати список спроб входу для конкретного користувача
+// Отримати список спроб входу для конкретного користувача
 exports.getUserLoginAttempts = async (req, res) => {
     try {
         const { user_id } = req.params;

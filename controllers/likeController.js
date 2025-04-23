@@ -1,4 +1,4 @@
-﻿const sequelize = require("../config/database"); // ✅ Підключення до бази
+const sequelize = require("../config/database"); // ✅ Підключення до бази
 const { QueryTypes } = require("sequelize");
 const jwt = require("jsonwebtoken");
 
