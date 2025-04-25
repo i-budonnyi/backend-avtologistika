@@ -1,20 +1,20 @@
-require('dotenv').config();
+require("dotenv").config();
+const { Sequelize } = require("sequelize");
 
-module.exports = {
-  development: {
-    username: process.env.PG_USER,
-    password: process.env.PG_PASSWORD,
-    database: process.env.PG_DATABASE,
-    host: process.env.PG_HOST, // має бути 'idea-backend-db' у .env
+const sequelize = new Sequelize(
+  process.env.PG_DATABASE,
+  process.env.PG_USER,
+  process.env.PG_PASSWORD,
+  {
+    host: process.env.PG_HOST,
     port: process.env.PG_PORT,
-    dialect: 'postgres',
-  },
-  production: {
-    username: process.env.PG_USER,
-    password: process.env.PG_PASSWORD,
-    database: process.env.PG_DATABASE,
-    host: process.env.PG_HOST, // має бути 'idea-backend-db' у .env
-    port: process.env.PG_PORT,
-    dialect: 'postgres',
-  },
-};
+    dialect: "postgres",
+    logging: false,
+    dialectOptions: {
+      ssl: {
+        require: true,
+        rejectUnauthorized: false,
+      },
+    },
+  }
+);
