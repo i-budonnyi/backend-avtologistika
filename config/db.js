@@ -1,15 +1,15 @@
 require("dotenv").config();
 const { Sequelize } = require("sequelize");
 
-// Параметри підключення до Render PostgreSQL
 const sequelize = new Sequelize(
-  "idea_backend_db", // Назва бази даних
-  "idea_user",       // Ім'я користувача
-  "fK2W0gYFdKpMY2zRq5mVF4L97Kv4VkOy", // Пароль
+  process.env.PG_DATABASE,
+  process.env.PG_USER,
+  process.env.PG_PASSWORD,
   {
-    host: "dpg-cvvokdi4d50c739ja380-a", // Хост
-    dialect: "postgres", // Використовуємо PostgreSQL
-    logging: false, // Вимикаємо логи SQL-запитів (опціонально)
+    host: process.env.PG_HOST, // РјР°С” Р±СѓС‚Рё: idea-backend-db
+    port: process.env.PG_PORT || 5432,
+    dialect: "postgres",
+    logging: false,
     dialectOptions: {
       ssl: {
         require: true,
@@ -19,13 +19,12 @@ const sequelize = new Sequelize(
   }
 );
 
-// Перевірка підключення
 sequelize.authenticate()
   .then(() => {
-    console.log("? Database connection has been established successfully.");
+    console.log("вњ… Database connection has been established successfully.");
   })
   .catch((error) => {
-    console.error("? Unable to connect to the database:", error.message);
+    console.error("вќЊ Unable to connect to the database:", error.message);
   });
 
 module.exports = sequelize;
