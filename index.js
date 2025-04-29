@@ -7,43 +7,43 @@ const jwt = require("jsonwebtoken");
 require("dotenv").config();
 
 const sequelize = require("./config/db");
-const authRoutes = require("./routes/authRoutes"); // 🔥 авторизаційні маршрути
+const authRoutes = require("./routes/authRoutes");
+const { register, login } = require("./controllers/authController"); // 🔥 пряме підключення
 
 const app = express();
 const PORT = process.env.PORT || 10000;
 const JWT_SECRET = process.env.JWT_SECRET || "your_secret_key";
 
-// ✅ Налаштування CORS
+// ✅ CORS
 app.use(cors({
   origin: ["https://leanavtologistika.netlify.app"],
   methods: ["GET", "POST", "PUT", "DELETE"],
   allowedHeaders: ["Content-Type", "Authorization"]
 }));
 
-// ✅ Парсер JSON
+// ✅ JSON
 app.use(express.json());
 
-// ✅ Встановлення Content-Type за замовчуванням
+// ✅ Content-Type
 app.use((req, res, next) => {
   res.setHeader("Content-Type", "application/json; charset=utf-8");
   next();
 });
 
-// 📝 Логування запитів
+// 📝 Запити
 app.use((req, res, next) => {
-  const log = `[${new Date().toISOString()}] Method: ${req.method}, URL: ${req.url}, IP: ${req.ip}`;
+  const log = `[${new Date().toISOString()}] ${req.method} ${req.url} — IP: ${req.ip}`;
   console.log(log);
   fs.appendFile("server.log", log + "\n", (err) => {
-    if (err) console.error("Error writing log:", err.message);
+    if (err) console.error("Помилка запису логу:", err.message);
   });
   next();
 });
 
-// 🔐 Middleware для перевірки токенів
+// 🔐 Middleware токена
 const authenticateToken = (req, res, next) => {
   const authHeader = req.headers.authorization;
   const token = authHeader && authHeader.split(" ")[1];
-
   if (!token) return res.status(401).json({ message: "Access token required" });
 
   jwt.verify(token, JWT_SECRET, (err, user) => {
@@ -53,10 +53,14 @@ const authenticateToken = (req, res, next) => {
   });
 };
 
-// ✅ Пряме підключення маршрутів авторизації
+// ✅ Прямі маршрути для /login та /register
+app.post("/login", login);
+app.post("/register", register);
+
+// ✅ Група маршрутів /api/authRoutes
 app.use("/api/authRoutes", authRoutes);
 
-// 📁 Автоматичне підключення інших роутів
+// 📁 Інші файли з /routes
 const routesDir = path.join(__dirname, "routes");
 fs.readdirSync(routesDir).forEach((file) => {
   if (file.endsWith(".js") && file !== "authRoutes.js") {
@@ -73,16 +77,16 @@ fs.readdirSync(routesDir).forEach((file) => {
   }
 });
 
-// 📆 Логування відповідей сервера
+// 📤 Відповіді
 app.use((req, res, next) => {
   const originalSend = res.send;
   res.send = function (body) {
-    console.log(`[RESPONSE] Статус: ${res.statusCode}, Відповідь:`, body);
+    console.log(`[RESPONSE] ${res.statusCode} =>`, body);
     fs.appendFile(
       "server.log",
-      `[${new Date().toISOString()}] Response Status: ${res.statusCode}, Body: ${JSON.stringify(body)}\n`,
+      `[${new Date().toISOString()}] Response ${res.statusCode}: ${JSON.stringify(body)}\n`,
       (err) => {
-        if (err) console.error("Error writing log:", err.message);
+        if (err) console.error("Помилка логування відповіді:", err.message);
       }
     );
     originalSend.apply(res, arguments);
@@ -90,7 +94,7 @@ app.use((req, res, next) => {
   next();
 });
 
-// 📀 Підключення до бази даних
+// 🔌 Підключення до бази
 sequelize.authenticate()
   .then(() => console.log("[DATABASE] Підключення успішне"))
   .catch((error) => {
@@ -98,7 +102,7 @@ sequelize.authenticate()
     process.exit(1);
   });
 
-// 🚀 Запуск сервера
+// 🚀 Сервер
 app.listen(PORT, () => {
   console.log(`[SERVER] Сервер запущено на порту ${PORT}`);
 });
