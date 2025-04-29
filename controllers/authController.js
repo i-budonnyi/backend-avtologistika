@@ -46,10 +46,12 @@ const register = async (req, res) => {
     } = req.body;
 
     if (!first_name.trim() || !last_name.trim() || !email.trim() || !password.trim() || !phone.trim()) {
+      log("warn", "⚠️ Порожні поля при реєстрації", req.body);
       return res.status(400).json({ message: "Будь ласка, заповніть всі поля" });
     }
 
-    if (!/^\S+@\S+\.\S+$/.test(email)) {
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      log("warn", "⚠️ Невірний email", { email });
       return res.status(400).json({ message: "Некоректний email" });
     }
 
@@ -62,6 +64,7 @@ const register = async (req, res) => {
     );
 
     if (existingUser) {
+      log("warn", "⚠️ Email вже зареєстрований", { email });
       return res.status(400).json({ message: "Email вже зайнятий" });
     }
 
@@ -85,7 +88,7 @@ const register = async (req, res) => {
     );
 
     await t.commit();
-    log("info", "✅ Успішна реєстрація", { id: result[0].id });
+    log("info", "✅ Успішна реєстрація", result[0]);
 
     return res.status(201).json({
       message: "Користувач зареєстрований",
@@ -93,10 +96,10 @@ const register = async (req, res) => {
     });
   } catch (error) {
     await t.rollback();
-    log("error", "❌ Помилка при реєстрації", { message: error.message });
+    log("error", "❌ Помилка при реєстрації", { error: error.message });
     return res.status(500).json({
       message: "Помилка сервера",
-      error: "Validation error",
+      error: error.message,
     });
   }
 };
@@ -110,6 +113,7 @@ const login = async (req, res) => {
     const { email = "", password = "" } = req.body;
 
     if (!email.trim() || !password.trim()) {
+      log("warn", "⚠️ Порожні поля при вході", req.body);
       return res.status(400).json({ message: "Будь ласка, введіть email і пароль" });
     }
 
@@ -122,11 +126,13 @@ const login = async (req, res) => {
     );
 
     if (!user) {
+      log("warn", "❌ Користувача не знайдено", { email });
       return res.status(404).json({ message: "Користувача не знайдено" });
     }
 
     const isPasswordValid = await bcrypt.compare(password, user.password);
     if (!isPasswordValid) {
+      log("warn", "❌ Невірний пароль", { email });
       return res.status(401).json({ message: "Невірний пароль" });
     }
 
@@ -142,10 +148,10 @@ const login = async (req, res) => {
       user: cleanUser,
     });
   } catch (error) {
-    log("error", "❌ Помилка при вході", { message: error.message });
+    log("error", "❌ Помилка при вході", { error: error.message });
     return res.status(500).json({
       message: "Помилка сервера",
-      error: "Authentication error",
+      error: error.message,
     });
   }
 };
