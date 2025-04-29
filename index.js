@@ -1,4 +1,4 @@
-// 📌 server.js — головний файл сервера Express
+// 📈 server.js — головний файл сервера Express
 const express = require("express");
 const cors = require("cors");
 const fs = require("fs");
@@ -54,9 +54,9 @@ const authenticateToken = (req, res, next) => {
 };
 
 // ✅ Пряме підключення маршрутів авторизації
-app.use("/", authRoutes); // POST /register, /login, GET /me
+app.use("/api/authRoutes", authRoutes);
 
-// 📁 Автоматичне підключення інших роутів з папки routes/
+// 📁 Автоматичне підключення інших роутів
 const routesDir = path.join(__dirname, "routes");
 fs.readdirSync(routesDir).forEach((file) => {
   if (file.endsWith(".js") && file !== "authRoutes.js") {
@@ -73,7 +73,7 @@ fs.readdirSync(routesDir).forEach((file) => {
   }
 });
 
-// 📦 Логування відповідей сервера
+// 📆 Логування відповідей сервера
 app.use((req, res, next) => {
   const originalSend = res.send;
   res.send = function (body) {
@@ -90,7 +90,7 @@ app.use((req, res, next) => {
   next();
 });
 
-// 🔌 Підключення до бази даних
+// 📀 Підключення до бази даних
 sequelize.authenticate()
   .then(() => console.log("[DATABASE] Підключення успішне"))
   .catch((error) => {
