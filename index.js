@@ -1,3 +1,4 @@
+// 📌 server.js — Головний файл, що запускає сервер Express
 const express = require("express");
 const cors = require("cors");
 const fs = require("fs");
@@ -6,41 +7,39 @@ const jwt = require("jsonwebtoken");
 require("dotenv").config();
 
 const sequelize = require("./config/db");
-const authRoutes = require("./routes/authRoutes"); // ✅ прямо підключаємо
+const authRoutes = require("./routes/authRoutes"); // ✅ реєстрація та логін
 
 const app = express();
 const PORT = process.env.PORT || 10000;
 const JWT_SECRET = process.env.JWT_SECRET || "your_secret_key";
 
-// ✅ CORS
+// ✅ Налаштування CORS
 app.use(cors({
   origin: ["https://leanavtologistika.netlify.app"],
   methods: ["GET", "POST", "PUT", "DELETE"],
   allowedHeaders: ["Content-Type", "Authorization"]
 }));
 
-// ✅ JSON parser
+// ✅ JSON парсер
 app.use(express.json());
 
-// ✅ Content-Type
+// ✅ Установка Content-Type за замовчуванням
 app.use((req, res, next) => {
   res.setHeader("Content-Type", "application/json; charset=utf-8");
   next();
 });
 
-// 🔍 Логування запитів
+// 📝 Логування вхідних запитів
 app.use((req, res, next) => {
   const log = `[${new Date().toISOString()}] Method: ${req.method}, URL: ${req.url}, IP: ${req.ip}`;
   console.log(log);
-
   fs.appendFile("server.log", log + "\n", (err) => {
     if (err) console.error("Error writing log:", err.message);
   });
-
   next();
 });
 
-// 🔐 Middleware: перевірка токена
+// 🔐 Middleware: перевірка JWT токена
 const authenticateToken = (req, res, next) => {
   const authHeader = req.headers.authorization;
   const token = authHeader && authHeader.split(" ")[1];
@@ -54,10 +53,13 @@ const authenticateToken = (req, res, next) => {
   });
 };
 
-// ✅ Пряме підключення маршрутів реєстрації/логіну
-app.use("/", authRoutes); // 👈 дозволяє POST /register напряму
+// ✅ Підключення маршрутів авторизації
+//   - POST /register → authController.register()
+//   - POST /login → authController.login()
+//   - GET /me → authController.me()
+app.use("/", authRoutes);
 
-// 📁 Автоматичне підключення інших роутів з /routes
+// 📁 Підключення інших роутів з /routes автоматично
 const routesDir = path.join(__dirname, "routes");
 fs.readdirSync(routesDir).forEach((file) => {
   if (file.endsWith(".js") && file !== "authRoutes.js") {
@@ -74,7 +76,7 @@ fs.readdirSync(routesDir).forEach((file) => {
   }
 });
 
-// 📦 Логування відповіді
+// 📦 Логування відповідей сервера
 app.use((req, res, next) => {
   const originalSend = res.send;
   res.send = function (body) {
@@ -91,7 +93,7 @@ app.use((req, res, next) => {
   next();
 });
 
-// 🔌 Підключення до бази
+// 🔌 Підключення до бази даних
 sequelize
   .authenticate()
   .then(() => console.log(`[DATABASE] Підключення успішне`))
