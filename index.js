@@ -1,4 +1,4 @@
-// 📌 server.js — Головний файл, що запускає сервер Express
+// 📌 server.js — головний файл сервера Express
 const express = require("express");
 const cors = require("cors");
 const fs = require("fs");
@@ -7,7 +7,7 @@ const jwt = require("jsonwebtoken");
 require("dotenv").config();
 
 const sequelize = require("./config/db");
-const authRoutes = require("./routes/authRoutes"); // ✅ реєстрація та логін
+const authRoutes = require("./routes/authRoutes"); // 🔥 авторизаційні маршрути
 
 const app = express();
 const PORT = process.env.PORT || 10000;
@@ -20,16 +20,16 @@ app.use(cors({
   allowedHeaders: ["Content-Type", "Authorization"]
 }));
 
-// ✅ JSON парсер
+// ✅ Парсер JSON
 app.use(express.json());
 
-// ✅ Установка Content-Type за замовчуванням
+// ✅ Встановлення Content-Type за замовчуванням
 app.use((req, res, next) => {
   res.setHeader("Content-Type", "application/json; charset=utf-8");
   next();
 });
 
-// 📝 Логування вхідних запитів
+// 📝 Логування запитів
 app.use((req, res, next) => {
   const log = `[${new Date().toISOString()}] Method: ${req.method}, URL: ${req.url}, IP: ${req.ip}`;
   console.log(log);
@@ -39,7 +39,7 @@ app.use((req, res, next) => {
   next();
 });
 
-// 🔐 Middleware: перевірка JWT токена
+// 🔐 Middleware для перевірки токенів
 const authenticateToken = (req, res, next) => {
   const authHeader = req.headers.authorization;
   const token = authHeader && authHeader.split(" ")[1];
@@ -53,13 +53,10 @@ const authenticateToken = (req, res, next) => {
   });
 };
 
-// ✅ Підключення маршрутів авторизації
-//   - POST /register → authController.register()
-//   - POST /login → authController.login()
-//   - GET /me → authController.me()
-app.use("/", authRoutes);
+// ✅ Пряме підключення маршрутів авторизації
+app.use("/", authRoutes); // POST /register, /login, GET /me
 
-// 📁 Підключення інших роутів з /routes автоматично
+// 📁 Автоматичне підключення інших роутів з папки routes/
 const routesDir = path.join(__dirname, "routes");
 fs.readdirSync(routesDir).forEach((file) => {
   if (file.endsWith(".js") && file !== "authRoutes.js") {
@@ -94,11 +91,10 @@ app.use((req, res, next) => {
 });
 
 // 🔌 Підключення до бази даних
-sequelize
-  .authenticate()
-  .then(() => console.log(`[DATABASE] Підключення успішне`))
+sequelize.authenticate()
+  .then(() => console.log("[DATABASE] Підключення успішне"))
   .catch((error) => {
-    console.error(`[DATABASE] Помилка підключення:`, error.message);
+    console.error("[DATABASE] Помилка підключення:", error.message);
     process.exit(1);
   });
 
