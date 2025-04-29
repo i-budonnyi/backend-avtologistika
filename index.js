@@ -6,6 +6,7 @@ const jwt = require("jsonwebtoken");
 require("dotenv").config();
 
 const sequelize = require("./config/db");
+const authRoutes = require("./routes/authRoutes"); // ✅ прямо підключаємо
 
 const app = express();
 const PORT = process.env.PORT || 10000;
@@ -13,9 +14,7 @@ const JWT_SECRET = process.env.JWT_SECRET || "your_secret_key";
 
 // ✅ CORS
 app.use(cors({
-  origin: [
-    "https://leanavtologistika.netlify.app"
-  ],
+  origin: ["https://leanavtologistika.netlify.app"],
   methods: ["GET", "POST", "PUT", "DELETE"],
   allowedHeaders: ["Content-Type", "Authorization"]
 }));
@@ -55,10 +54,13 @@ const authenticateToken = (req, res, next) => {
   });
 };
 
-// 📁 Автоматичне підключення роутів з папки /routes
+// ✅ Пряме підключення маршрутів реєстрації/логіну
+app.use("/", authRoutes); // 👈 дозволяє POST /register напряму
+
+// 📁 Автоматичне підключення інших роутів з /routes
 const routesDir = path.join(__dirname, "routes");
 fs.readdirSync(routesDir).forEach((file) => {
-  if (file.endsWith(".js")) {
+  if (file.endsWith(".js") && file !== "authRoutes.js") {
     const filePath = path.join(routesDir, file);
     const router = require(filePath);
 
