@@ -1,4 +1,3 @@
-
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const { Sequelize } = require("sequelize");
@@ -6,6 +5,7 @@ const sequelize = require("../config/database");
 
 const JWT_SECRET = process.env.JWT_SECRET || "your_secret_key";
 
+// 🔐 Генерація JWT токена
 const generateToken = (user) => {
   return jwt.sign(
     {
@@ -20,6 +20,7 @@ const generateToken = (user) => {
   );
 };
 
+// 🧠 Лог-функція
 const log = (level, message, details = {}) => {
   const timestamp = new Date().toISOString();
   console[level](`[${timestamp}] ${message}`);
@@ -28,6 +29,7 @@ const log = (level, message, details = {}) => {
   }
 };
 
+// ✅ Реєстрація користувача
 const register = async (req, res) => {
   res.setHeader("Content-Type", "application/json; charset=utf-8");
   log("info", "📌 Запит на реєстрацію", req.body);
@@ -94,11 +96,12 @@ const register = async (req, res) => {
     log("error", "❌ Помилка при реєстрації", { message: error.message });
     return res.status(500).json({
       message: "Помилка сервера",
-      error: error.message,
+      error: "Validation error",
     });
   }
 };
 
+// ✅ Вхід користувача
 const login = async (req, res) => {
   res.setHeader("Content-Type", "application/json; charset=utf-8");
   log("info", "📌 Запит на вхід", req.body);
@@ -142,11 +145,12 @@ const login = async (req, res) => {
     log("error", "❌ Помилка при вході", { message: error.message });
     return res.status(500).json({
       message: "Помилка сервера",
-      error: error.message,
+      error: "Authentication error",
     });
   }
 };
 
+// ❌ Обробка неіснуючих маршрутів
 const notFound = (req, res) => {
   res.status(404).json({ message: "Маршрут не знайдено" });
 };
