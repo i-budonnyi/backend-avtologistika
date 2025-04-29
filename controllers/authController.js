@@ -56,7 +56,6 @@ const register = async (req, res) => {
       return res.status(400).json({ message: "Будь ласка, заповніть всі поля" });
     }
 
-    // Простий email формат
     if (!/^\S+@\S+\.\S+$/.test(email)) {
       return res.status(400).json({ message: "Некоректний email" });
     }
@@ -115,4 +114,57 @@ const register = async (req, res) => {
   }
 };
 
-module.exports = { register };
+// ✅ Вхід користувача
+const login = async (req, res) => {
+  res.setHeader("Content-Type", "application/json; charset=utf-8");
+  log("info", "📌 Запит на вхід", req.body);
+
+  try {
+    const { email = "", password = "" } = req.body;
+
+    if (!email.trim() || !password.trim()) {
+      return res.status(400).json({ message: "Будь ласка, введіть email і пароль" });
+    }
+
+    const [user] = await sequelize.query(
+      "SELECT * FROM users WHERE email = :email LIMIT 1",
+      {
+        replacements: { email: email.trim() },
+        type: Sequelize.QueryTypes.SELECT,
+      }
+    );
+
+    if (!user) {
+      return res.status(404).json({ message: "Користувача не знайдено" });
+    }
+
+    const isPasswordValid = await bcrypt.compare(password, user.password);
+    if (!isPasswordValid) {
+      return res.status(401).json({ message: "Невірний пароль" });
+    }
+
+    const cleanUser = { ...user };
+    delete cleanUser.password;
+
+    const token = generateToken(cleanUser);
+    log("info", "✅ Успішний вхід", { userId: user.id });
+
+    return res.status(200).json({
+      message: "Вхід успішний",
+      token,
+      user: cleanUser,
+    });
+  } catch (error) {
+    log("error", "❌ Помилка при вході", { message: error.message });
+    return res.status(500).json({
+      message: "Помилка сервера",
+      error: error.message,
+    });
+  }
+};
+
+// Експортуємо обидві функції
+module.exports = {
+  register,
+  login,
+};
