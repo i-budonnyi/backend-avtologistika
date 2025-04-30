@@ -108,6 +108,18 @@ app.use((req, res, next) => {
   };
   next();
 });
+app.get("/api/ideaRoutes/ambassadors", (req, res) => {
+  console.log("✅ Запит на амбасадорів (тимчасовий)");
+  res.json([
+    { id: 1, first_name: "Test", last_name: "Ambassador" },
+    { id: 2, first_name: "Demo", last_name: "User" }
+  ]);
+});
+
+app.post("/api/ideaRoutes", (req, res) => {
+  console.log("✅ Отримано ідею:", req.body);
+  res.status(201).json({ message: "Ідея прийнята (тимчасово)" });
+});
 
 // 🔌 Перевірка підключення до бази даних
 sequelize.authenticate()
