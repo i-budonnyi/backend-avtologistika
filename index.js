@@ -8,7 +8,7 @@ require("dotenv").config();
 
 const sequelize = require("./config/db");
 const authRoutes = require("./routes/authRoutes");
-const { register, login } = require("./controllers/authController"); // 🔥 пряме підключення
+const { register, login } = require("./controllers/authController");
 
 const app = express();
 const PORT = process.env.PORT || 10000;
@@ -21,16 +21,16 @@ app.use(cors({
   allowedHeaders: ["Content-Type", "Authorization"]
 }));
 
-// ✅ JSON
+// ✅ JSON парсер
 app.use(express.json());
 
-// ✅ Content-Type
+// ✅ Заголовки Content-Type
 app.use((req, res, next) => {
   res.setHeader("Content-Type", "application/json; charset=utf-8");
   next();
 });
 
-// 📝 Запити
+// 📝 Логування всіх вхідних запитів
 app.use((req, res, next) => {
   const log = `[${new Date().toISOString()}] ${req.method} ${req.url} — IP: ${req.ip}`;
   console.log(log);
@@ -40,7 +40,7 @@ app.use((req, res, next) => {
   next();
 });
 
-// 🔐 Middleware токена
+// 🔐 Middleware для перевірки токена
 const authenticateToken = (req, res, next) => {
   const authHeader = req.headers.authorization;
   const token = authHeader && authHeader.split(" ")[1];
@@ -53,15 +53,16 @@ const authenticateToken = (req, res, next) => {
   });
 };
 
-// ✅ Прямі маршрути для /login та /register
+// ✅ Прямі маршрути для логіну та реєстрації
 app.post("/login", login);
 app.post("/register", register);
 
-// ✅ Група маршрутів /api/authRoutes
+// ✅ Окремо підключаємо authRoutes
 app.use("/api/authRoutes", authRoutes);
 
-// 📁 Інші файли з /routes
+// 📁 Автоматично підключаємо всі інші роути з /routes
 const routesDir = path.join(__dirname, "routes");
+
 fs.readdirSync(routesDir).forEach((file) => {
   if (file.endsWith(".js") && file !== "authRoutes.js") {
     const filePath = path.join(routesDir, file);
@@ -69,15 +70,21 @@ fs.readdirSync(routesDir).forEach((file) => {
 
     if (typeof router === "function" && router.stack) {
       const routeBase = file === "index.js" ? "/" : `/${file.replace(".js", "")}`;
-      app.use(`/api${routeBase}`, router);
-      console.log(`[ROUTES] Підключено: /api${routeBase}`);
+      const fullPath = `/api${routeBase}`;
+
+      app.use(fullPath, (req, res, next) => {
+        console.log(`📥 [ROUTE] Запит на ${fullPath}${req.url}`);
+        return router(req, res, next);
+      });
+
+      console.log(`[ROUTES] Підключено: ${fullPath}`);
     } else {
       console.warn(`[ROUTES] Пропущено ${file} — не express.Router`);
     }
   }
 });
 
-// 📤 Відповіді
+// 📤 Логування всіх відповідей
 app.use((req, res, next) => {
   const originalSend = res.send;
   res.send = function (body) {
@@ -94,7 +101,7 @@ app.use((req, res, next) => {
   next();
 });
 
-// 🔌 Підключення до бази
+// 🔌 Перевірка підключення до бази даних
 sequelize.authenticate()
   .then(() => console.log("[DATABASE] Підключення успішне"))
   .catch((error) => {
@@ -102,7 +109,7 @@ sequelize.authenticate()
     process.exit(1);
   });
 
-// 🚀 Сервер
+// 🚀 Запуск сервера
 app.listen(PORT, () => {
   console.log(`[SERVER] Сервер запущено на порту ${PORT}`);
 });
