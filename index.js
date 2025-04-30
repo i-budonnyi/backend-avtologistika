@@ -30,10 +30,15 @@ app.use((req, res, next) => {
   next();
 });
 
-// 📝 Логування всіх вхідних запитів
+// 📝 Глобальне логування вхідних запитів
 app.use((req, res, next) => {
-  const log = `[${new Date().toISOString()}] ${req.method} ${req.url} — IP: ${req.ip}`;
-  console.log(log);
+  const now = new Date().toISOString();
+  const log = `[${now}] ${req.method} ${req.originalUrl} — IP: ${req.ip}`;
+  console.log("\n" + log);
+  console.log("🔸 Headers:", req.headers);
+  if (req.body && Object.keys(req.body).length > 0) {
+    console.log("📦 Body:", req.body);
+  }
   fs.appendFile("server.log", log + "\n", (err) => {
     if (err) console.error("Помилка запису логу:", err.message);
   });
@@ -73,9 +78,9 @@ fs.readdirSync(routesDir).forEach((file) => {
       const fullPath = `/api${routeBase}`;
 
       app.use(fullPath, (req, res, next) => {
-        console.log(`📥 [ROUTE] Запит на ${fullPath}${req.url}`);
-        return router(req, res, next);
-      });
+        console.log(`📥 [ROUTE] Запит на ${req.method} ${fullPath}${req.url}`);
+        next();
+      }, router);
 
       console.log(`[ROUTES] Підключено: ${fullPath}`);
     } else {
@@ -84,7 +89,7 @@ fs.readdirSync(routesDir).forEach((file) => {
   }
 });
 
-// 📤 Логування всіх відповідей
+// 📤 Логування відповідей (тільки для JSON)
 app.use((req, res, next) => {
   const originalSend = res.send;
   res.send = function (body) {
