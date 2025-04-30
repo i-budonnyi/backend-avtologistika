@@ -8,6 +8,7 @@ require("dotenv").config();
 
 const sequelize = require("./config/db");
 const authRoutes = require("./routes/authRoutes");
+const ideaRoutes = require("./routes/ideaRoutes"); // ✅ пряме підключення
 const { register, login } = require("./controllers/authController");
 
 const app = express();
@@ -62,34 +63,36 @@ const authenticateToken = (req, res, next) => {
 app.post("/login", login);
 app.post("/register", register);
 
-// ✅ Окремо підключаємо authRoutes
+// ✅ authRoutes окремо
 app.use("/api/authRoutes", authRoutes);
 
-// 📁 Автоматично підключаємо всі інші роути з /routes
-const routesDir = path.join(__dirname, "routes");
+// ✅ ideaRoutes — ПРЯМО
+app.use("/api/ideaRoutes", ideaRoutes);
 
+// 📁 Автоматичне підключення інших роутиків з /routes (крім уже підключених)
+const routesDir = path.join(__dirname, "routes");
 fs.readdirSync(routesDir).forEach((file) => {
-  if (file.endsWith(".js") && file !== "authRoutes.js") {
+  if (
+    file.endsWith(".js") &&
+    file !== "authRoutes.js" &&
+    file !== "ideaRoutes.js"
+  ) {
+    const routeName = file.replace(".js", "");
+    const fullPath = `/api/${routeName}`;
     const filePath = path.join(routesDir, file);
     const router = require(filePath);
-
-    if (typeof router === "function" && router.stack) {
-      const routeBase = file === "index.js" ? "/" : `/${file.replace(".js", "")}`;
-      const fullPath = `/api${routeBase}`;
-
-      app.use(fullPath, (req, res, next) => {
-        console.log(`📥 [ROUTE] Запит на ${req.method} ${fullPath}${req.url}`);
-        next();
-      }, router);
-
-      console.log(`[ROUTES] Підключено: ${fullPath}`);
-    } else {
-      console.warn(`[ROUTES] Пропущено ${file} — не express.Router`);
-    }
+    app.use(fullPath, router);
+    console.log(`[ROUTES] ✅ Підключено: ${fullPath}`);
   }
 });
 
-// 📤 Логування відповідей (тільки для JSON)
+// 🛠 Простий ping для перевірки доступності
+app.get("/api/ping", (req, res) => {
+  console.log("🔔 Пінг від клієнта: бекенд живий");
+  res.status(200).json({ message: "pong" });
+});
+
+// 📤 Логування відповідей
 app.use((req, res, next) => {
   const originalSend = res.send;
   res.send = function (body) {
