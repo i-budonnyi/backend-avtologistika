@@ -8,7 +8,7 @@ require("dotenv").config();
 
 const sequelize = require("./config/db");
 const authRoutes = require("./routes/authRoutes");
-const ideaRoutes = require("./routes/ideaRoutes"); // ✅ пряме підключення
+const ideaRoutes = require("./routes/ideaRoutes");
 const { register, login } = require("./controllers/authController");
 
 const app = express();
@@ -17,21 +17,26 @@ const JWT_SECRET = process.env.JWT_SECRET || "your_secret_key";
 
 // ✅ CORS
 app.use(cors({
-  origin: ["https://leanavtologistika.netlify.app"],
+  origin: "https://leanavtologistika.netlify.app",
   methods: ["GET", "POST", "PUT", "DELETE"],
-  allowedHeaders: ["Content-Type", "Authorization"]
+  allowedHeaders: ["Content-Type", "Authorization"],
+  credentials: true,
+  optionsSuccessStatus: 200
 }));
 
 // ✅ JSON парсер
 app.use(express.json());
 
-// ✅ Заголовки Content-Type
+// ✅ Заголовки Access-Control
 app.use((req, res, next) => {
+  res.setHeader("Access-Control-Allow-Origin", "https://leanavtologistika.netlify.app");
+  res.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
   res.setHeader("Content-Type", "application/json; charset=utf-8");
   next();
 });
 
-// 📝 Глобальне логування вхідних запитів
+// 📝 Логування запитів
 app.use((req, res, next) => {
   const now = new Date().toISOString();
   const log = `[${now}] ${req.method} ${req.originalUrl} — IP: ${req.ip}`;
@@ -59,17 +64,15 @@ const authenticateToken = (req, res, next) => {
   });
 };
 
-// ✅ Прямі маршрути для логіну та реєстрації
+// ✅ Прямі маршрути логіну / реєстрації
 app.post("/login", login);
 app.post("/register", register);
 
-// ✅ authRoutes окремо
+// ✅ API-маршрути
 app.use("/api/authRoutes", authRoutes);
-
-// ✅ ideaRoutes — ПРЯМО
 app.use("/api/ideaRoutes", ideaRoutes);
 
-// 📁 Автоматичне підключення інших роутиків з /routes (крім уже підключених)
+// 📁 Динамічне підключення інших маршрутів
 const routesDir = path.join(__dirname, "routes");
 fs.readdirSync(routesDir).forEach((file) => {
   if (
@@ -86,7 +89,7 @@ fs.readdirSync(routesDir).forEach((file) => {
   }
 });
 
-// 🛠 Простий ping для перевірки доступності
+// 🛠 Ping endpoint
 app.get("/api/ping", (req, res) => {
   console.log("🔔 Пінг від клієнта: бекенд живий");
   res.status(200).json({ message: "pong" });
@@ -108,20 +111,8 @@ app.use((req, res, next) => {
   };
   next();
 });
-app.get("/api/ideaRoutes/ambassadors", (req, res) => {
-  console.log("✅ Запит на амбасадорів (тимчасовий)");
-  res.json([
-    { id: 1, first_name: "Test", last_name: "Ambassador" },
-    { id: 2, first_name: "Demo", last_name: "User" }
-  ]);
-});
 
-app.post("/api/ideaRoutes", (req, res) => {
-  console.log("✅ Отримано ідею:", req.body);
-  res.status(201).json({ message: "Ідея прийнята (тимчасово)" });
-});
-
-// 🔌 Перевірка підключення до бази даних
+// 🔌 Підключення до бази
 sequelize.authenticate()
   .then(() => console.log("[DATABASE] Підключення успішне"))
   .catch((error) => {
