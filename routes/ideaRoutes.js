@@ -1,52 +1,36 @@
 ﻿const express = require("express");
 const router = express.Router();
 const ideaController = require("../controllers/ideaController");
+const authenticate = require("../middleware/auth"); // ✅ middleware
 
 console.log("[ideaRoutes] 📌 Ініціалізація маршрутів...");
-console.log("[ideaRoutes] 📌 Експортовані функції контролера:", ideaController);
 
-// 🔥 Перевіряємо, чи всі функції є в `ideaController`
-const { 
-    getAllIdeas, 
-    createIdea, 
-    updateIdeaStatus, 
-    getAllAmbassadors, 
-    authenticateUser, 
-    getUserIdeas,
-    getIdeasByAmbassador // 🔥 Додана функція для отримання ідей, де обрали конкретного амбасадора
+const {
+  getAllIdeas,
+  createIdea,
+  updateIdeaStatus,
+  getAllAmbassadors,
+  getUserIdeas,
+  getIdeasByAmbassador
 } = ideaController;
 
-if (!getAllIdeas || !createIdea || !updateIdeaStatus || !getAllAmbassadors || !authenticateUser || !getUserIdeas || !getIdeasByAmbassador) {
-    console.error("[ideaRoutes] ❌ Помилка: Одна або більше функцій не імпортовані!");
-    console.error({
-        getAllIdeas,
-        createIdea,
-        updateIdeaStatus,
-        getAllAmbassadors,
-        authenticateUser,
-        getUserIdeas,
-        getIdeasByAmbassador
-    });
-    throw new Error("❌ Маршрути не можуть бути підключені через відсутні функції контролера!");
-}
-
-// ✅ Отримання всіх ідей
+// 🔹 Отримати всі ідеї (публічно)
 router.get("/", getAllIdeas);
 
-// ✅ Отримання ідей конкретного користувача (авторизація обов'язкова)
-router.get("/user-ideas", authenticateUser, getUserIdeas);
+// 🔹 Отримати ідеї певного користувача (авторизація)
+router.get("/user-ideas", authenticate, getUserIdeas);
 
-// ✅ Отримання ідей, де певного амбасадора було обрано іншими користувачами
-router.get("/selected-ambassador-ideas/:ambassadorId", authenticateUser, getIdeasByAmbassador);
+// 🔹 Отримати ідеї, де певного амбасадора обрано іншими (публічно)
+router.get("/selected-ambassador-ideas/:ambassadorId", getIdeasByAmbassador);
 
-// ✅ Створення ідеї
-router.post("/", authenticateUser, createIdea);
+// 🔹 Створити ідею (авторизація)
+router.post("/", authenticate, createIdea);
 
-// ✅ Оновлення статусу ідеї
-router.put("/:id", authenticateUser, updateIdeaStatus);
+// 🔹 Оновити статус ідеї (авторизація)
+router.put("/:id", authenticate, updateIdeaStatus);
 
-// ✅ Отримання списку амбасадорів
+// 🔹 Отримати список амбасадорів (публічно)
 router.get("/ambassadors", getAllAmbassadors);
 
-console.log("[ideaRoutes] ✅ Маршрути успішно підключені.");
+console.log("[ideaRoutes] ✅ Маршрути підключені успішно.");
 module.exports = router;
