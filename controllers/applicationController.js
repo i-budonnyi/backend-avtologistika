@@ -2,7 +2,7 @@ const { QueryTypes } = require("sequelize");
 const sequelize = require("../config/database");
 const jwt = require("jsonwebtoken");
 
-// Створення заявки
+// 🔧 Створення заявки з перевіркою дубля та зміною статусу ідеї
 const createApplication = async (req, res) => {
   try {
     const { user_id, title, content, idea_id, type } = req.body;
@@ -16,12 +16,32 @@ const createApplication = async (req, res) => {
       return res.status(400).json({ message: "Неправильний тип заявки!" });
     }
 
+    const existing = await sequelize.query(
+      `SELECT id FROM applications WHERE user_id = :user_id AND idea_id = :idea_id`,
+      {
+        replacements: { user_id, idea_id },
+        type: QueryTypes.SELECT,
+      }
+    );
+
+    if (existing.length > 0) {
+      return res.status(409).json({ message: "Заявку вже створено для цієї ідеї." });
+    }
+
     const [newApplication] = await sequelize.query(
       `INSERT INTO applications (user_id, title, content, idea_id, type, status, created_at, updated_at)
        VALUES (:user_id, :title, :content, :idea_id, :type, 'draft', NOW(), NOW()) RETURNING *`,
       {
         replacements: { user_id, title, content, idea_id, type },
         type: QueryTypes.INSERT,
+      }
+    );
+
+    await sequelize.query(
+      `UPDATE ideas SET status = 'applied', updated_at = NOW() WHERE id = :idea_id`,
+      {
+        replacements: { idea_id },
+        type: QueryTypes.UPDATE,
       }
     );
 
@@ -32,7 +52,7 @@ const createApplication = async (req, res) => {
   }
 };
 
-// Отримання всіх заявок разом з ім'ям і прізвищем автора
+// 📥 Отримання всіх заявок із повною інформацією про автора
 const getAllApplications = async (req, res) => {
   try {
     const applications = await sequelize.query(
@@ -44,7 +64,6 @@ const getAllApplications = async (req, res) => {
         type: QueryTypes.SELECT,
       }
     );
-
     res.json(applications);
   } catch (error) {
     console.error("❌ Помилка отримання заявок:", error);
@@ -52,7 +71,7 @@ const getAllApplications = async (req, res) => {
   }
 };
 
-// Отримання заявки за ID
+// 📄 Отримання заявки за ID
 const getApplicationById = async (req, res) => {
   try {
     const { id } = req.params;
@@ -79,14 +98,15 @@ const getApplicationById = async (req, res) => {
   }
 };
 
-// Оновлення заявки
+// ✏️ Оновлення заявки
 const updateApplication = async (req, res) => {
   try {
     const { id } = req.params;
     const { title, content, status } = req.body;
 
     const [updated] = await sequelize.query(
-      `UPDATE applications SET title = :title, content = :content, status = :status, updated_at = NOW()
+      `UPDATE applications 
+       SET title = :title, content = :content, status = :status, updated_at = NOW()
        WHERE id = :id RETURNING *`,
       {
         replacements: { title, content, status, id },
@@ -105,15 +125,18 @@ const updateApplication = async (req, res) => {
   }
 };
 
-// Видалення заявки
+// ❌ Видалення заявки
 const deleteApplication = async (req, res) => {
   try {
     const { id } = req.params;
 
-    const deleted = await sequelize.query("DELETE FROM applications WHERE id = :id RETURNING *", {
-      replacements: { id },
-      type: QueryTypes.DELETE,
-    });
+    const deleted = await sequelize.query(
+      `DELETE FROM applications WHERE id = :id RETURNING *`,
+      {
+        replacements: { id },
+        type: QueryTypes.DELETE,
+      }
+    );
 
     if (!deleted) {
       return res.status(404).json({ message: "Заявка не знайдена" });
@@ -126,7 +149,7 @@ const deleteApplication = async (req, res) => {
   }
 };
 
-// Оновлення заявки рішенням журі
+// 🧠 Оновлення заявки рішенням журі
 const updateApplicationByJury = async (req, res) => {
   try {
     const { id } = req.params;
@@ -167,7 +190,6 @@ const updateApplicationByJury = async (req, res) => {
   }
 };
 
-// Експорт контролера
 module.exports = {
   createApplication,
   getAllApplications,
