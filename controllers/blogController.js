@@ -17,10 +17,7 @@ const authenticateUser = (req, res, next) => {
 
     try {
         const decoded = jwt.verify(token, process.env.JWT_SECRET);
-
         console.log("[AUTH] 🔑 Декодований токен:", decoded);
-
-        // ✅ Використовуємо `decoded.user_id`, якщо він є, або `decoded.id`
         req.user = { user_id: decoded.user_id || decoded.id };
 
         if (!req.user.user_id) {
@@ -57,22 +54,22 @@ const getAllEntries = async (req, res) => {
 
         const blogs = await sequelize.query(
             `SELECT b.id, b.title, b.description, b.user_id AS authorId, 
-                COALESCE(u.first_name, 'Невідомий') || ' ' || COALESCE(u.last_name, '') AS authorName,
-                COALESCE(u.email, 'немає email') AS authorEmail,
+                COALESCE(u1.first_name, 'Невідомий') || ' ' || COALESCE(u1.last_name, '') AS authorName,
+                COALESCE(u1.email, 'немає email') AS authorEmail,
                 b.created_at AS createdAt
             FROM blog b
-            LEFT JOIN users u ON b.user_id = u.id
+            LEFT JOIN users u1 ON b.user_id = u1.id
             ORDER BY b.created_at DESC`,
             { type: QueryTypes.SELECT }
         );
 
         const ideas = await sequelize.query(
             `SELECT i.id, i.title, i.description, i.user_id AS authorId, 
-                COALESCE(u.first_name, 'Невідомий') || ' ' || COALESCE(u.last_name, '') AS authorName,
-                COALESCE(u.email, 'немає email') AS authorEmail,
+                COALESCE(u2.first_name, 'Невідомий') || ' ' || COALESCE(u2.last_name, '') AS authorName,
+                COALESCE(u2.email, 'немає email') AS authorEmail,
                 i.created_at AS createdAt
             FROM ideas i
-            LEFT JOIN users u ON i.user_id = u.id
+            LEFT JOIN users u2 ON i.user_id = u2.id
             ORDER BY i.created_at DESC`,
             { type: QueryTypes.SELECT }
         );
