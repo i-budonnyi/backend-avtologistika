@@ -28,7 +28,7 @@ const authenticateUser = (req, res, next) => {
     }
 };
 
-// ✅ Отримати всі коментарі для конкретного запису (блог, ідея, проблема)
+// ✅ Отримати всі коментарі (публічно)
 const getCommentsByEntry = async (req, res) => {
     try {
         const { entry_id } = req.params;
@@ -70,23 +70,27 @@ const getCommentsByEntry = async (req, res) => {
 const addComment = async (req, res) => {
     try {
         const { entry_id, entry_type, text } = req.body;
+        const user_id = req.user?.user_id;
+
         if (!entry_id || !entry_type || !text) {
-            return res.status(400).json({ error: "ID запису, його тип і текст коментаря обов'язкові." });
+            return res.status(400).json({ error: "ID запису, тип і текст коментаря обов'язкові." });
         }
 
-        const user_id = req.user.user_id;
+        if (!user_id) {
+            return res.status(403).json({ error: "Ви не авторизовані." });
+        }
 
         console.log(`[addComment] 💬 Додавання коментаря... User ID: ${user_id}, Entry ID: ${entry_id}, Type: ${entry_type}`);
 
-        let column = entry_type === "blog" ? "blog_id"
-                    : entry_type === "idea" ? "idea_id"
-                    : "problem_id";
+        const column = entry_type === "blog" ? "blog_id"
+                      : entry_type === "idea" ? "idea_id"
+                      : "problem_id";
 
         await sequelize.query(
             `INSERT INTO comments (${column}, user_id, comment, created_at)
-            VALUES (:entry_id, :user_id, :text, NOW())`,
+             VALUES (:entry_id, :user_id, :text, NOW())`,
             {
-                replacements: { entry_id, user_id, text },
+                replacements: { entry_id, user_id, text }, // ✅ Додано user_id
                 type: QueryTypes.INSERT,
             }
         );
@@ -99,7 +103,7 @@ const addComment = async (req, res) => {
     }
 };
 
-// ✅ Видалити коментар (тільки автор коментаря)
+// ✅ Видалити коментар (тільки автор)
 const deleteComment = async (req, res) => {
     try {
         const { id } = req.params;
@@ -113,12 +117,10 @@ const deleteComment = async (req, res) => {
         );
 
         if (!comment) {
-            console.warn("[deleteComment] ❌ Коментар не знайдено.");
             return res.status(404).json({ error: "Коментар не знайдено." });
         }
 
         if (comment.user_id !== user_id) {
-            console.warn("[deleteComment] ❌ Видалення заборонено. Це не ваш коментар.");
             return res.status(403).json({ error: "Видалення заборонено. Це не ваш коментар." });
         }
 
@@ -135,10 +137,10 @@ const deleteComment = async (req, res) => {
     }
 };
 
-// ✅ Експорт контролерів коментарів
+// ✅ Експортуємо
 module.exports = {
-    authenticateUser,
     getCommentsByEntry,
     addComment,
     deleteComment,
+    authenticateUser // 🔄 Додаємо middleware тут
 };
