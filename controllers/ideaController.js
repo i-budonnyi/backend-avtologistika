@@ -4,8 +4,7 @@ const jwt = require("jsonwebtoken");
 
 const JWT_SECRET = process.env.JWT_SECRET || "your_secret_key";
 
-// 🔐 Middleware перевірки токена
-const authenticateUser = (req, res, next) => {
+// 🔐 Middleware перевірки токена\const authenticateUser = (req, res, next) => {
   const authHeader = req.headers.authorization;
   if (!authHeader || !authHeader.startsWith("Bearer ")) {
     console.error("❌ [AUTH] Відсутній токен авторизації.");
@@ -29,13 +28,21 @@ const authenticateUser = (req, res, next) => {
   }
 };
 
-// ✅ Отримати всі ідеї
+// ✅ Отримати всі ідеї (з іменами авторів)
 const getAllIdeas = async (req, res) => {
   try {
-    console.log("[getAllIdeas] 🔍 Отримання всіх ідей...");
-    const ideas = await sequelize.query(`SELECT * FROM ideas ORDER BY created_at DESC`, {
+    console.log("[getAllIdeas] 🔍 Отримання всіх ідей з авторами...");
+    const ideas = await sequelize.query(`
+      SELECT i.*, 
+             u.first_name AS author_first_name, 
+             u.last_name AS author_last_name
+      FROM ideas i
+      LEFT JOIN users u ON i.user_id = u.id
+      ORDER BY i.created_at DESC
+    `, {
       type: QueryTypes.SELECT,
     });
+
     console.log(`[getAllIdeas] ✅ Отримано ${ideas.length} ідей.`);
     res.status(200).json(ideas);
   } catch (error) {
@@ -72,7 +79,7 @@ const getIdeasByAmbassador = async (req, res) => {
 
     console.log(`[getIdeasByAmbassador] 🔍 ID амбасадора = ${ambassadorId}`);
     const ideas = await sequelize.query(
-      `SELECT i.*, u.first_name AS author_name, u.last_name AS author_last_name
+      `SELECT i.*, u.first_name AS author_first_name, u.last_name AS author_last_name
        FROM ideas i
        LEFT JOIN users u ON i.user_id = u.id
        WHERE i.ambassador_id = :ambassadorId

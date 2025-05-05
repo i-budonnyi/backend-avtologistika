@@ -41,36 +41,27 @@ const getAllEntries = async (req, res) => {
         const userId = req.user?.user_id || "Гість";
         console.log(`[PROCESS] 👤 Користувач запитує записи. User ID: ${userId}`);
 
-        let userData = null;
-        if (req.user) {
-            const userQuery = await sequelize.query(
-                `SELECT id, first_name, last_name, email FROM users WHERE id = :userId`,
-                { replacements: { userId: req.user.user_id }, type: QueryTypes.SELECT }
-            );
-            userData = userQuery.length ? userQuery[0] : null;
-        }
-
-        console.log(`[PROCESS] 🔍 Авторизований користувач: ${userData ? `${userData.first_name} ${userData.last_name} (Email: ${userData.email})` : "Анонім"}`);
-
         const blogs = await sequelize.query(
-            `SELECT b.id, b.title, b.description, b.user_id AS authorId, 
-                COALESCE(u1.first_name, 'Невідомий') || ' ' || COALESCE(u1.last_name, '') AS authorName,
-                COALESCE(u1.email, 'немає email') AS authorEmail,
-                b.created_at AS createdAt
-            FROM blog b
-            LEFT JOIN users u1 ON b.user_id = u1.id
-            ORDER BY b.created_at DESC`,
+            `SELECT b.id, b.title, b.description, b.user_id AS authorId,
+                    u.first_name AS author_first_name,
+                    u.last_name AS author_last_name,
+                    u.email AS author_email,
+                    b.created_at AS createdAt
+             FROM blog b
+             LEFT JOIN users u ON b.user_id = u.id
+             ORDER BY b.created_at DESC`,
             { type: QueryTypes.SELECT }
         );
 
         const ideas = await sequelize.query(
-            `SELECT i.id, i.title, i.description, i.user_id AS authorId, 
-                COALESCE(u2.first_name, 'Невідомий') || ' ' || COALESCE(u2.last_name, '') AS authorName,
-                COALESCE(u2.email, 'немає email') AS authorEmail,
-                i.created_at AS createdAt
-            FROM ideas i
-            LEFT JOIN users u2 ON i.user_id = u2.id
-            ORDER BY i.created_at DESC`,
+            `SELECT i.id, i.title, i.description, i.user_id AS authorId,
+                    u.first_name AS author_first_name,
+                    u.last_name AS author_last_name,
+                    u.email AS author_email,
+                    i.created_at AS createdAt
+             FROM ideas i
+             LEFT JOIN users u ON i.user_id = u.id
+             ORDER BY i.created_at DESC`,
             { type: QueryTypes.SELECT }
         );
 
@@ -80,15 +71,6 @@ const getAllEntries = async (req, res) => {
         }
 
         console.log(`[PROCESS] ✅ Отримано ${blogs.length} блогів та ${ideas.length} ідей.`);
-
-        blogs.forEach(blog => {
-            console.log(`[DB] 📝 БЛОГ | ID: ${blog.id} | Автор: "${blog.authorName}" (Email: ${blog.authorEmail}) | Назва: ${blog.title}`);
-        });
-
-        ideas.forEach(idea => {
-            console.log(`[DB] 💡 ІДЕЯ | ID: ${idea.id} | Автор: "${idea.authorName}" (Email: ${idea.authorEmail}) | Назва: ${idea.title}`);
-        });
-
         res.status(200).json({ blogs, ideas });
 
     } catch (error) {
