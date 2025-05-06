@@ -164,6 +164,34 @@ const addComment = async (req, res) => {
     res.status(500).json({ message: "Помилка додавання коментаря", error: error.message });
   }
 };
+const getCommentsByEntry = async (req, res) => {
+  try {
+    const { entry_id } = req.params;
+
+    if (!entry_id) {
+      return res.status(400).json({ error: "Необхідно вказати entry_id (ID запису)." });
+    }
+
+    const comments = await sequelize.query(
+      `SELECT 
+          c.id, 
+          c.comment AS text,
+          c.created_at AS createdAt,
+          u.id AS authorId, 
+          CONCAT(u.first_name, ' ', u.last_name) AS authorName
+       FROM comments c
+       LEFT JOIN users u ON c.user_id = u.id
+       WHERE c.blog_id = :entry_id OR c.idea_id = :entry_id OR c.problem_id = :entry_id
+       ORDER BY c.created_at DESC`,
+      { replacements: { entry_id }, type: QueryTypes.SELECT }
+    );
+
+    res.status(200).json({ comments });
+  } catch (error) {
+    console.error("❌ [getCommentsByEntry] Помилка:", error);
+    res.status(500).json({ error: error.message });
+  }
+};
 
 module.exports = {
   authenticateUser,
