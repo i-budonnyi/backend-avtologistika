@@ -114,53 +114,37 @@ const deleteBlogEntry = async (req, res) => {
 
 // ✅ Додати коментар з іменем
 const addComment = async (req, res) => {
+  const { entry_id, entry_type, comment } = req.body; // ✅ тут comment, не text
+  const user_id = req.user?.user_id;
+
+  if (!entry_id || !entry_type || !comment || !user_id) {
+    return res.status(400).json({ error: "Всі поля обов'язкові (entry_id, entry_type, comment, user_id)." });
+  }
+
+  const column =
+    entry_type === "blog" ? "blog_id" :
+    entry_type === "idea" ? "idea_id" :
+    entry_type === "problem" ? "problem_id" : null;
+
+  if (!column) {
+    return res.status(400).json({ error: "Невідомий тип запису." });
+  }
+
   try {
-    const { entry_id, entry_type, text } = req.body;
-    const authHeader = req.headers.authorization;
-    let userId = null;
-    let authorName = "Анонім";
-
-    if (authHeader?.startsWith("Bearer ")) {
-      try {
-        const token = authHeader.split(" ")[1];
-        const decoded = jwt.verify(token, process.env.JWT_SECRET);
-        userId = decoded.user_id || decoded.id;
-
-        const [user] = await sequelize.query(
-          `SELECT first_name, last_name FROM users WHERE id = :id`,
-          { replacements: { id: userId }, type: QueryTypes.SELECT }
-        );
-
-        if (user?.first_name) {
-          authorName = `${user.first_name} ${user.last_name || ""}`.trim();
-        }
-      } catch {
-        authorName = "Анонім";
-      }
-    }
-
-    const column = {
-      blog: "blog_id",
-      idea: "idea_id",
-      problem: "problem_id",
-    }[entry_type];
-
-    if (!column) {
-      return res.status(400).json({ message: "Невідомий тип запису" });
-    }
-
-    const [result] = await sequelize.query(
-      `INSERT INTO comments (${column}, user_id, comment, author_name, created_at, updated_at)
-       VALUES (:entry_id, :userId, :text, :authorName, NOW(), NOW()) RETURNING id`,
+    await sequelize.query(
+      `INSERT INTO comments (${column}, user_id, comment, created_at, updated_at)
+       VALUES (:entry_id, :user_id, :comment, NOW(), NOW())`,
       {
-        replacements: { entry_id, userId, text, authorName },
+        replacements: { entry_id, user_id, comment },
         type: QueryTypes.INSERT,
       }
     );
 
-    res.status(201).json({ message: "Коментар додано", comment_id: result[0].id });
-  } catch (error) {
-    res.status(500).json({ message: "Помилка додавання коментаря", error: error.message });
+    console.log(`[addComment] ✅ Коментар додано`);
+    res.status(201).json({ message: "Коментар успішно додано." });
+  } catch (err) {
+    console.error("[addComment] ❌", err.message);
+    res.status(500).json({ error: err.message });
   }
 };
 
