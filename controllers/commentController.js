@@ -4,11 +4,11 @@ const jwt = require("jsonwebtoken");
 
 const JWT_SECRET = process.env.JWT_SECRET || "your_secret_key";
 
-// ✅ Middleware
+// 🔐 Middleware авторизації
 const authenticateUser = (req, res, next) => {
     const authHeader = req.headers.authorization;
     if (!authHeader || !authHeader.startsWith("Bearer ")) {
-        return res.status(401).json({ message: "Необхідно авторизуватися. Відсутній токен." });
+        return res.status(401).json({ message: "Необхідно авторизуватися. Токен відсутній." });
     }
 
     const token = authHeader.split(" ")[1];
@@ -24,14 +24,15 @@ const authenticateUser = (req, res, next) => {
         console.log(`[AUTH] ✅ Авторизовано користувача ID: ${user_id}`);
         next();
     } catch (error) {
+        console.error("[AUTH] ❌", error.message);
         return res.status(403).json({ message: "Невірний або протермінований токен" });
     }
 };
 
-// ✅ Отримати коментарі
+// 📥 Отримати всі коментарі для запису
 const getCommentsByEntry = async (req, res) => {
     const { entry_id } = req.params;
-    if (!entry_id) return res.status(400).json({ error: "Не вказано ID запису." });
+    if (!entry_id) return res.status(400).json({ error: "Не вказано entry_id." });
 
     try {
         const comments = await sequelize.query(
@@ -60,13 +61,13 @@ const getCommentsByEntry = async (req, res) => {
     }
 };
 
-// ✅ Додати коментар
+// ➕ Додати коментар
 const addComment = async (req, res) => {
     const { entry_id, entry_type, text } = req.body;
     const user_id = req.user?.user_id;
 
     if (!entry_id || !entry_type || !text || !user_id) {
-        return res.status(400).json({ error: "Всі поля обов'язкові." });
+        return res.status(400).json({ error: "Всі поля обов'язкові (entry_id, entry_type, text, user_id)." });
     }
 
     const column =
@@ -75,7 +76,7 @@ const addComment = async (req, res) => {
         entry_type === "problem" ? "problem_id" : null;
 
     if (!column) {
-        return res.status(400).json({ error: "Некоректний тип запису." });
+        return res.status(400).json({ error: "Невідомий тип запису." });
     }
 
     try {
@@ -88,6 +89,7 @@ const addComment = async (req, res) => {
             }
         );
 
+        console.log(`[addComment] ✅ Додано коментар до ${entry_type} ID ${entry_id} від користувача ${user_id}`);
         res.status(201).json({ message: "Коментар успішно додано." });
     } catch (err) {
         console.error("[addComment] ❌", err.message);
@@ -95,10 +97,14 @@ const addComment = async (req, res) => {
     }
 };
 
-// ✅ Видалити
+// 🗑 Видалити коментар
 const deleteComment = async (req, res) => {
     const { id } = req.params;
-    const user_id = req.user.user_id;
+    const user_id = req.user?.user_id;
+
+    if (!id || !user_id) {
+        return res.status(400).json({ error: "Необхідно передати ID коментаря і бути авторизованим." });
+    }
 
     try {
         const [comment] = await sequelize.query(
@@ -108,20 +114,22 @@ const deleteComment = async (req, res) => {
 
         if (!comment) return res.status(404).json({ error: "Коментар не знайдено." });
         if (comment.user_id !== user_id)
-            return res.status(403).json({ error: "Це не ваш коментар." });
+            return res.status(403).json({ error: "Видалення заборонене. Це не ваш коментар." });
 
         await sequelize.query(
             `DELETE FROM comments WHERE id = :comment_id`,
             { replacements: { comment_id: id }, type: QueryTypes.DELETE }
         );
 
-        res.status(200).json({ message: "Коментар видалено." });
+        console.log(`[deleteComment] ✅ Видалено коментар ID ${id}`);
+        res.status(200).json({ message: "Коментар успішно видалено." });
     } catch (err) {
         console.error("[deleteComment] ❌", err.message);
         res.status(500).json({ error: err.message });
     }
 };
 
+// 📦 Експорт
 module.exports = {
     authenticateUser,
     getCommentsByEntry,
