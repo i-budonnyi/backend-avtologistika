@@ -41,7 +41,13 @@ const getCommentsByEntry = async (req, res) => {
                 c.comment AS text,
                 c.created_at AS createdAt,
                 u.id AS authorId,
-                CONCAT(u.first_name, ' ', u.last_name) AS authorName,
+                TRIM(
+                  CONCAT(
+                    COALESCE(NULLIF(u.first_name, ''), ''),
+                    ' ',
+                    COALESCE(NULLIF(u.last_name, ''), '')
+                  )
+                ) AS authorName,
                 CASE 
                     WHEN c.blog_id IS NOT NULL THEN 'blog'
                     WHEN c.idea_id IS NOT NULL THEN 'idea'
