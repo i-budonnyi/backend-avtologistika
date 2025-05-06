@@ -66,7 +66,6 @@ const getCommentsByEntry = async (req, res) => {
     }
 };
 
-// ✅ Додати новий коментар
 const addComment = async (req, res) => {
     try {
         const { entry_id, entry_type, text } = req.body;
@@ -87,10 +86,10 @@ const addComment = async (req, res) => {
                       : "problem_id";
 
         await sequelize.query(
-            `INSERT INTO comments (${column}, user_id, comment, created_at)
-             VALUES (:entry_id, :user_id, :text, NOW())`,
+            `INSERT INTO comments (${column}, user_id, content, created_at, updated_at)
+             VALUES (:entry_id, :user_id, :text, NOW(), NOW())`,
             {
-                replacements: { entry_id, user_id, text }, // ✅ Додано user_id
+                replacements: { entry_id, user_id, text },
                 type: QueryTypes.INSERT,
             }
         );
@@ -102,6 +101,7 @@ const addComment = async (req, res) => {
         res.status(500).json({ error: error.message });
     }
 };
+
 
 // ✅ Видалити коментар (тільки автор)
 const deleteComment = async (req, res) => {
