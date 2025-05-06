@@ -2,15 +2,14 @@ const { QueryTypes } = require("sequelize");
 const jwt = require("jsonwebtoken");
 const sequelize = require("../config/database"); // ✅ Підключення до бази
 
-// ✅ Middleware для аутентифікації
+// ✅ Middleware для обов'язкової аутентифікації
 const authenticateUser = (req, res, next) => {
     console.log("\n[AUTH] 🔍 Перевірка токена...");
     const authHeader = req.headers.authorization;
 
     if (!authHeader || !authHeader.startsWith("Bearer ")) {
-        console.warn("[AUTH] ⚠️ Токен відсутній, доступ тільки до публічних даних.");
-        req.user = null;
-        return next();
+        console.warn("[AUTH] ❌ Токен відсутній!");
+        return res.status(401).json({ message: "Потрібна авторизація (токен відсутній)" });
     }
 
     const token = authHeader.split(" ")[1];
@@ -33,12 +32,12 @@ const authenticateUser = (req, res, next) => {
     }
 };
 
-// ✅ Отримати всі блоги та ідеї
+// ✅ Отримати всі блоги та ідеї (тільки для авторизованих)
 const getAllEntries = async (req, res) => {
     try {
         console.log("\n[PROCESS] 📥 Запит отримано: GET /api/blogRoutes/entries");
 
-        const userId = req.user?.user_id || "Гість";
+        const userId = req.user.user_id;
         console.log(`[PROCESS] 👤 Користувач запитує записи. User ID: ${userId}`);
 
         const blogs = await sequelize.query(
@@ -85,17 +84,13 @@ const createBlogEntry = async (req, res) => {
         console.log("[PROCESS] 📥 Запит отримано: POST /api/blogRoutes/create");
 
         const { title, description, type } = req.body;
-        const userId = req.user?.user_id;
-
-        if (!userId) {
-            return res.status(403).json({ message: "❌ Ви не авторизовані!" });
-        }
-
-        console.log(`[PROCESS] ✍️ Створення запису... User ID: ${userId}, Type: ${type}`);
+        const userId = req.user.user_id;
 
         if (!title || !description || !type) {
             return res.status(400).json({ message: "❌ Всі поля обов'язкові." });
         }
+
+        console.log(`[PROCESS] ✍️ Створення запису... User ID: ${userId}, Type: ${type}`);
 
         const tableName = type === "blog" ? "blog" : "ideas";
         const [newEntry] = await sequelize.query(
@@ -119,7 +114,7 @@ const deleteBlogEntry = async (req, res) => {
         console.log("[PROCESS] 🗑 Видалення запису...");
 
         const { entryId } = req.params;
-        const userId = req.user?.user_id;
+        const userId = req.user.user_id;
 
         if (!entryId) {
             return res.status(400).json({ message: "❌ ID запису обов'язковий." });
