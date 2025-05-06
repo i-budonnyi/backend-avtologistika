@@ -14,14 +14,14 @@ const authenticateUser = (req, res, next) => {
     const token = authHeader.split(" ")[1];
     try {
         const decoded = jwt.verify(token, JWT_SECRET);
-        const user_id = decoded.user_id || decoded.id;
+        const userId = decoded.id || decoded.user_id;
 
-        if (!user_id) {
+        if (!userId) {
             return res.status(401).json({ message: "Некоректний токен: user_id відсутній." });
         }
 
-        req.user = { user_id };
-        console.log(`[AUTH] ✅ Авторизовано користувача ID: ${user_id}`);
+        req.user = { id: userId };
+        console.log(`[AUTH] ✅ Авторизовано користувача ID: ${userId}`);
         next();
     } catch (error) {
         console.error("[AUTH] ❌", error.message);
@@ -63,46 +63,46 @@ const getCommentsByEntry = async (req, res) => {
 
 // ➕ Додати коментар
 const addComment = async (req, res) => {
-  const { entry_id, entry_type, comment } = req.body;
-  const user_id = req.user?.user_id;
+    const { entry_id, entry_type, comment } = req.body;
+    const user_id = req.user?.id;
 
-  if (!entry_id || !entry_type || !comment || !user_id) {
-    return res.status(400).json({
-      error: "Всі поля обов'язкові (entry_id, entry_type, comment, user_id).",
-    });
-  }
+    if (!entry_id || !entry_type || !comment || !user_id) {
+        return res.status(400).json({
+            error: "Всі поля обов'язкові (entry_id, entry_type, comment, user_id).",
+        });
+    }
 
-  const column =
-    entry_type === "blog" ? "blog_id" :
-    entry_type === "idea" ? "idea_id" :
-    entry_type === "problem" ? "problem_id" : null;
+    const column =
+        entry_type === "blog" ? "blog_id" :
+        entry_type === "idea" ? "idea_id" :
+        entry_type === "problem" ? "problem_id" : null;
 
-  if (!column) {
-    return res.status(400).json({ error: "Невідомий тип запису." });
-  }
+    if (!column) {
+        return res.status(400).json({ error: "Невідомий тип запису." });
+    }
 
-  try {
-    await sequelize.query(
-      `INSERT INTO comments (${column}, user_id, comment, created_at, updated_at)
-       VALUES (:entry_id, :user_id, :comment, NOW(), NOW())`,
-      {
-        replacements: { entry_id, user_id, comment },
-        type: QueryTypes.INSERT,
-      }
-    );
+    try {
+        await sequelize.query(
+            `INSERT INTO comments (${column}, user_id, comment, created_at, updated_at)
+             VALUES (:entry_id, :user_id, :comment, NOW(), NOW())`,
+            {
+                replacements: { entry_id, user_id, comment },
+                type: QueryTypes.INSERT,
+            }
+        );
 
-    console.log(`[addComment] ✅ Коментар додано`);
-    res.status(201).json({ message: "Коментар успішно додано." });
-  } catch (err) {
-    console.error("[addComment] ❌", err.message);
-    res.status(500).json({ error: err.message });
-  }
+        console.log(`[addComment] ✅ Коментар додано`);
+        res.status(201).json({ message: "Коментар успішно додано." });
+    } catch (err) {
+        console.error("[addComment] ❌", err.message);
+        res.status(500).json({ error: err.message });
+    }
 };
 
 // 🗑 Видалити коментар
 const deleteComment = async (req, res) => {
     const { id } = req.params;
-    const user_id = req.user?.user_id;
+    const user_id = req.user?.id;
 
     if (!id || !user_id) {
         return res.status(400).json({ error: "Необхідно передати ID коментаря і бути авторизованим." });
