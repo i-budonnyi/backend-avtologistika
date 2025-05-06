@@ -39,15 +39,9 @@ const getCommentsByEntry = async (req, res) => {
             `SELECT 
                 c.id, 
                 c.comment AS text,
-                c.created_at AS createdAt,
+                to_char(c.created_at, 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') AS "createdAt",
                 u.id AS authorId,
-                TRIM(
-                  CONCAT(
-                    COALESCE(NULLIF(u.first_name, ''), ''),
-                    ' ',
-                    COALESCE(NULLIF(u.last_name, ''), '')
-                  )
-                ) AS authorName,
+                TRIM(CONCAT(COALESCE(u.first_name, ''), ' ', COALESCE(u.last_name, ''))) AS authorName,
                 CASE 
                     WHEN c.blog_id IS NOT NULL THEN 'blog'
                     WHEN c.idea_id IS NOT NULL THEN 'idea'
@@ -60,7 +54,12 @@ const getCommentsByEntry = async (req, res) => {
             { replacements: { entry_id }, type: QueryTypes.SELECT }
         );
 
-        res.status(200).json({ comments });
+        const safeComments = comments.map((c) => ({
+            ...c,
+            authorName: c.authorName?.trim() || "Анонім"
+        }));
+
+        res.status(200).json({ comments: safeComments });
     } catch (err) {
         console.error("[getCommentsByEntry] ❌", err.message);
         res.status(500).json({ error: err.message });
