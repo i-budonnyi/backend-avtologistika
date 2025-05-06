@@ -61,13 +61,13 @@ const getCommentsByEntry = async (req, res) => {
     }
 };
 
-// ➕ Додати коментар
+/// ➕ Додати коментар
 const addComment = async (req, res) => {
-    const { entry_id, entry_type, text } = req.body;
+    const { entry_id, entry_type, comment } = req.body; // 🟢 використовуємо comment
     const user_id = req.user?.user_id;
 
-    if (!entry_id || !entry_type || !text || !user_id) {
-        return res.status(400).json({ error: "Всі поля обов'язкові (entry_id, entry_type, text, user_id)." });
+    if (!entry_id || !entry_type || !comment || !user_id) {
+        return res.status(400).json({ error: "Всі поля обов'язкові (entry_id, entry_type, comment, user_id)." });
     }
 
     const column =
@@ -82,9 +82,9 @@ const addComment = async (req, res) => {
     try {
         await sequelize.query(
             `INSERT INTO comments (${column}, user_id, comment, created_at, updated_at)
-             VALUES (:entry_id, :user_id, :text, NOW(), NOW())`,
+             VALUES (:entry_id, :user_id, :comment, NOW(), NOW())`,
             {
-                replacements: { entry_id, user_id, text },
+                replacements: { entry_id, user_id, comment },
                 type: QueryTypes.INSERT,
             }
         );
@@ -96,6 +96,7 @@ const addComment = async (req, res) => {
         res.status(500).json({ error: err.message });
     }
 };
+
 
 // 🗑 Видалити коментар
 const deleteComment = async (req, res) => {
