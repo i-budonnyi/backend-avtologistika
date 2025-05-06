@@ -61,42 +61,43 @@ const getCommentsByEntry = async (req, res) => {
     }
 };
 
-/// ➕ Додати коментар
+// ➕ Додати коментар
 const addComment = async (req, res) => {
-    const { entry_id, entry_type, comment } = req.body; // 🟢 використовуємо comment
-    const user_id = req.user?.user_id;
+  const { entry_id, entry_type, comment } = req.body;
+  const user_id = req.user?.user_id;
 
-    if (!entry_id || !entry_type || !comment || !user_id) {
-        return res.status(400).json({ error: "Всі поля обов'язкові (entry_id, entry_type, comment, user_id)." });
-    }
+  if (!entry_id || !entry_type || !comment || !user_id) {
+    return res.status(400).json({
+      error: "Всі поля обов'язкові (entry_id, entry_type, comment, user_id).",
+    });
+  }
 
-    const column =
-        entry_type === "blog" ? "blog_id" :
-        entry_type === "idea" ? "idea_id" :
-        entry_type === "problem" ? "problem_id" : null;
+  const column =
+    entry_type === "blog" ? "blog_id" :
+    entry_type === "idea" ? "idea_id" :
+    entry_type === "problem" ? "problem_id" : null;
 
-    if (!column) {
-        return res.status(400).json({ error: "Невідомий тип запису." });
-    }
+  if (!column) {
+    return res.status(400).json({ error: "Невідомий тип запису." });
+  }
 
-    try {
-        await sequelize.query(
-            `INSERT INTO comments (${column}, user_id, comment, created_at, updated_at)
-             VALUES (:entry_id, :user_id, :comment, NOW(), NOW())`,
-            {
-                replacements: { entry_id, user_id, comment },
-                type: QueryTypes.INSERT,
-            }
-        );
+  try {
+    await sequelize.query(
+      `INSERT INTO comments (${column}, user_id, comment, created_at, updated_at)
+       VALUES (:entry_id, :user_id, :comment, NOW(), NOW())`,
+      {
+        replacements: { entry_id, user_id, comment },
+        type: QueryTypes.INSERT,
+      }
+    );
 
-        console.log(`[addComment] ✅ Додано коментар до ${entry_type} ID ${entry_id} від користувача ${user_id}`);
-        res.status(201).json({ message: "Коментар успішно додано." });
-    } catch (err) {
-        console.error("[addComment] ❌", err.message);
-        res.status(500).json({ error: err.message });
-    }
+    console.log(`[addComment] ✅ Коментар додано`);
+    res.status(201).json({ message: "Коментар успішно додано." });
+  } catch (err) {
+    console.error("[addComment] ❌", err.message);
+    res.status(500).json({ error: err.message });
+  }
 };
-
 
 // 🗑 Видалити коментар
 const deleteComment = async (req, res) => {
