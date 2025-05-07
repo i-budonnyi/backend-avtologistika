@@ -41,7 +41,9 @@ const getCommentsByEntry = async (req, res) => {
                 c.comment AS text,
                 to_char(c.created_at, 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') AS "createdAt",
                 u.id AS authorId,
-                TRIM(CONCAT(COALESCE(u.first_name, ''), ' ', COALESCE(u.last_name, ''))) AS authorName,
+                u.first_name AS author_first_name,
+                u.last_name AS author_last_name,
+                u.email AS author_email,
                 CASE 
                     WHEN c.blog_id IS NOT NULL THEN 'blog'
                     WHEN c.idea_id IS NOT NULL THEN 'idea'
@@ -54,17 +56,13 @@ const getCommentsByEntry = async (req, res) => {
             { replacements: { entry_id }, type: QueryTypes.SELECT }
         );
 
-        const safeComments = comments.map((c) => ({
-            ...c,
-            authorName: c.authorName?.trim() || "Анонім"
-        }));
-
-        res.status(200).json({ comments: safeComments });
+        res.status(200).json({ comments });
     } catch (err) {
         console.error("[getCommentsByEntry] ❌", err.message);
         res.status(500).json({ error: err.message });
     }
 };
+
 
 // ➕ Додати коментар
 const addComment = async (req, res) => {
