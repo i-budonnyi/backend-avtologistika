@@ -104,11 +104,13 @@ const deleteAllNotifications = async (req, res) => {
   }
 };
 
+// Замість createNotification
 module.exports = {
-  createNotification,
+  addNotification: createNotification,
   getUserNotifications,
   updateNotificationStatus,
   markAsRead,
   addCommentToNotification,
   deleteAllNotifications,
 };
+
