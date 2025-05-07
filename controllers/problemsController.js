@@ -1,4 +1,4 @@
-const sequelize = require("../config/database"); // ✅ Підключення до БД
+const sequelize = require("../config/database");
 const { QueryTypes } = require("sequelize");
 const jwt = require("jsonwebtoken");
 
@@ -43,14 +43,14 @@ const getAllAmbassadors = async (req, res) => {
   }
 };
 
-// ✅ Отримати всі проблеми
+// ✅ Отримати всі проблеми (🔧 ЗАМІНЕНО user_ → author_)
 const getAllProblems = async (req, res) => {
   try {
     console.log("[getAllProblems] Запит отримано...");
 
     const problems = await sequelize.query(
       `SELECT p.id, p.title, p.description, p.status, 
-              u.first_name AS user_first_name, u.last_name AS user_last_name,
+              u.first_name AS author_first_name, u.last_name AS author_last_name,
               a.id AS ambassador_id, a.first_name AS ambassador_first_name, a.last_name AS ambassador_last_name
        FROM problems p
        LEFT JOIN users u ON p.user_id = u.id
@@ -66,7 +66,7 @@ const getAllProblems = async (req, res) => {
   }
 };
 
-// ✅ Отримати проблеми конкретного користувача
+// ✅ Проблеми для конкретного користувача
 const getUserProblems = async (req, res) => {
   try {
     if (!req.user || !req.user.id) {
@@ -89,7 +89,7 @@ const getUserProblems = async (req, res) => {
 
     if (!problems || problems.length === 0) {
       console.warn("[PROBLEMS] ⚠️ Користувач ще не подав жодної проблеми.");
-      return res.status(200).json([]); // Повертаємо порожній масив, а не 404
+      return res.status(200).json([]);
     }
 
     console.log(`[PROBLEMS] ✅ Отримано ${problems.length} проблем.`);
@@ -151,7 +151,7 @@ const deleteProblem = async (req, res) => {
   }
 };
 
-// ✅ Оновити статус проблеми
+// ✅ Оновити статус
 const updateProblemStatus = async (req, res) => {
   try {
     console.log("[updateProblemStatus] 🔄 Оновлення статусу проблеми...");
@@ -176,13 +176,13 @@ const updateProblemStatus = async (req, res) => {
   }
 };
 
-// ✅ Експортуємо всі функції
+// ✅ Експорт
 module.exports = {
   getAllProblems,
   getUserProblems,
   createProblem,
   deleteProblem,
-  updateProblemStatus, // 🔥 ДОДАНО! Тепер функція є у модулі
+  updateProblemStatus,
   getAllAmbassadors,
   authenticateUser,
 };
