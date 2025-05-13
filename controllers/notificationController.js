@@ -26,7 +26,7 @@ const createNotification = async (req, res) => {
 // 📥 Отримати всі сповіщення користувача
 const getUserNotifications = async (req, res) => {
   const { userId } = req.params;
-  console.log("📡 [GET] Запит сповіщень для userId:", userId);
+  console.log("📡 [GET] Запит сповіщень для userId:", userId, "тип:", typeof userId);
 
   if (!userId || isNaN(Number(userId))) {
     console.warn("⚠️ Некоректний або відсутній userId:", userId);
@@ -39,18 +39,17 @@ const getUserNotifications = async (req, res) => {
       [userId]
     );
 
-    if (result.rows.length === 0) {
-      console.info(`ℹ️ Немає сповіщень для користувача з ID: ${userId}`);
-    } else {
-      console.log(`✅ Отримано ${result.rows.length} сповіщень`);
-    }
+    console.log("📦 SQL результат:", JSON.stringify(result, null, 2));
+    console.log("✅ Отримано сповіщень:", result.rowCount);
 
     res.status(200).json(result.rows);
   } catch (error) {
-    console.error("❌ [getUserNotifications] Помилка:", error);
+    console.error("❌ [getUserNotifications] SQL-помилка:", error.message);
+    console.error("🔍 Stack:", error.stack);
     res.status(500).json({ message: "Помилка при отриманні сповіщень.", error: error.message });
   }
 };
+
 
 // ✅ Оновити статус сповіщення
 const updateNotificationStatus = async (req, res) => {
