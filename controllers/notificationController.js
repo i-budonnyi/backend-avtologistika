@@ -26,7 +26,8 @@ const createNotification = async (req, res) => {
 // 📥 Отримати всі сповіщення користувача
 const getUserNotifications = async (req, res) => {
   const { userId } = req.params;
-  console.log("📡 [GET] Запит сповіщень для userId:", userId, "тип:", typeof userId);
+  console.log("📡 [GET] userId from params:", userId);
+  console.log("🧪 Тип userId:", typeof userId);
 
   if (!userId || isNaN(Number(userId))) {
     console.warn("⚠️ Некоректний або відсутній userId:", userId);
@@ -38,14 +39,11 @@ const getUserNotifications = async (req, res) => {
       `SELECT * FROM notifications WHERE user_id = $1 ORDER BY created_at DESC`,
       [userId]
     );
-
-    console.log("📦 SQL результат:", JSON.stringify(result, null, 2));
-    console.log("✅ Отримано сповіщень:", result.rowCount);
+    console.log("📦 Результат запиту:", result.rows);
 
     res.status(200).json(result.rows);
   } catch (error) {
-    console.error("❌ [getUserNotifications] SQL-помилка:", error.message);
-    console.error("🔍 Stack:", error.stack);
+    console.error("❌ [getUserNotifications] SQL помилка:", error.message);
     res.status(500).json({ message: "Помилка при отриманні сповіщень.", error: error.message });
   }
 };
