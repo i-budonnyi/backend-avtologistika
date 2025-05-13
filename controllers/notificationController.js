@@ -144,7 +144,7 @@ const deleteAllNotifications = async (req, res) => {
   }
 
   try {
-    const result = await pool.query(`DELETE FROM notifications WHERE user_id = $1`, [userId]);
+    await pool.query(`DELETE FROM notifications WHERE user_id = $1`, [userId]);
     console.log(`✅ Видалено всі сповіщення для userId: ${userId}`);
     res.json({ success: true });
   } catch (error) {
