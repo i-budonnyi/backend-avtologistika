@@ -25,9 +25,10 @@ const createNotification = async (req, res) => {
 const getUserNotifications = async (req, res) => {
   const { userId } = req.params;
   const parsedId = parseInt(userId, 10);
-  console.log("📡 [GET] userId from params:", userId);
 
-  if (!parsedId || isNaN(parsedId)) {
+  console.log("[GET] userId from params:", userId);
+
+  if (isNaN(parsedId)) {
     return res.status(400).json({ message: "Некоректний userId." });
   }
 
@@ -38,7 +39,7 @@ const getUserNotifications = async (req, res) => {
     );
     res.status(200).json(result.rows);
   } catch (error) {
-    console.error("❌ [getUserNotifications] SQL помилка:", error.message);
+    console.error("[getUserNotifications] SQL помилка:", error.message);
     res.status(500).json({ message: "Помилка при отриманні сповіщень.", error: error.message });
   }
 };
