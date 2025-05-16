@@ -1,33 +1,5 @@
 const sequelize = require("../config/database");
 const { QueryTypes } = require("sequelize");
-const jwt = require("jsonwebtoken");
-
-const JWT_SECRET = process.env.JWT_SECRET || "your_secret_key";
-
-// ✅ Middleware для перевірки JWT
-const authenticateUser = (req, res, next) => {
-  const authHeader = req.headers.authorization;
-  if (!authHeader || !authHeader.startsWith("Bearer ")) {
-    console.error("[authenticateUser] ❌ Відсутній токен авторизації.");
-    return res.status(401).json({ message: "Необхідно авторизуватися" });
-  }
-
-  const token = authHeader.split(" ")[1];
-
-  try {
-    const decoded = jwt.verify(token, JWT_SECRET);
-    if (!decoded.id) {
-      console.error("[authenticateUser] ❌ Токен не містить id.");
-      return res.status(401).json({ message: "Токен недійсний." });
-    }
-    req.user = decoded;
-    console.log("[authenticateUser] ✅ Авторизація успішна:", req.user);
-    next();
-  } catch (error) {
-    console.error("[authenticateUser] ❌ Помилка перевірки токена:", error);
-    return res.status(403).json({ message: "Невірний або протермінований токен" });
-  }
-};
 
 // ✅ Отримати всіх амбасадорів
 const getAllAmbassadors = async (req, res) => {
@@ -38,7 +10,6 @@ const getAllAmbassadors = async (req, res) => {
     );
     res.status(200).json(ambassadors);
   } catch (error) {
-    console.error("[getAllAmbassadors] ❌", error);
     res.status(500).json({ message: "Помилка отримання списку амбасадорів", error: error.message });
   }
 };
@@ -58,7 +29,6 @@ const getAllProblems = async (req, res) => {
     );
     res.status(200).json(problems);
   } catch (error) {
-    console.error("[getAllProblems] ❌", error);
     res.status(500).json({ message: "Помилка отримання проблем", error: error.message });
   }
 };
@@ -78,7 +48,6 @@ const getUserProblems = async (req, res) => {
     );
     res.status(200).json(problems);
   } catch (error) {
-    console.error("[getUserProblems] ❌", error);
     res.status(500).json({ message: "Помилка отримання проблем", error: error.message });
   }
 };
@@ -99,7 +68,6 @@ const createProblem = async (req, res) => {
     );
     res.status(201).json({ message: "Проблема успішно подана" });
   } catch (error) {
-    console.error("[createProblem] ❌", error);
     res.status(500).json({ message: "Помилка створення проблеми", error: error.message });
   }
 };
@@ -117,7 +85,6 @@ const deleteProblem = async (req, res) => {
     }
     res.status(200).json({ message: "Проблему успішно видалено" });
   } catch (error) {
-    console.error("[deleteProblem] ❌", error);
     res.status(500).json({ message: "Помилка видалення проблеми", error: error.message });
   }
 };
@@ -137,7 +104,6 @@ const updateProblemStatus = async (req, res) => {
     );
     res.status(200).json({ message: "Статус проблеми успішно оновлено." });
   } catch (error) {
-    console.error("[updateProblemStatus] ❌", error);
     res.status(500).json({ message: "Помилка оновлення статусу", error: error.message });
   }
 };
@@ -149,5 +115,4 @@ module.exports = {
   deleteProblem,
   updateProblemStatus,
   getAllAmbassadors,
-  authenticateUser,
 };
