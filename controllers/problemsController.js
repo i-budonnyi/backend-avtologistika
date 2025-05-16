@@ -16,6 +16,10 @@ const authenticateUser = (req, res, next) => {
 
   try {
     const decoded = jwt.verify(token, JWT_SECRET);
+    if (!decoded.id) {
+      console.error("[authenticateUser] ❌ Токен не містить id.");
+      return res.status(401).json({ message: "Токен недійсний." });
+    }
     req.user = decoded;
     console.log("[authenticateUser] ✅ Авторизація успішна:", req.user);
     next();
@@ -48,7 +52,8 @@ const getAllProblems = async (req, res) => {
               a.id AS ambassador_id, a.first_name AS ambassador_first_name, a.last_name AS ambassador_last_name
        FROM problems p
        LEFT JOIN users u ON p.user_id = u.id
-       LEFT JOIN ambassadors a ON p.ambassador_id = a.id`,
+       LEFT JOIN ambassadors a ON p.ambassador_id = a.id
+       ORDER BY p.created_at DESC`,
       { type: QueryTypes.SELECT }
     );
     res.status(200).json(problems);
@@ -61,9 +66,7 @@ const getAllProblems = async (req, res) => {
 // ✅ Отримати проблеми користувача
 const getUserProblems = async (req, res) => {
   try {
-    const userId = req.user?.id;
-    if (!userId) return res.status(401).json({ message: "Авторизація обов'язкова" });
-
+    const userId = req.user.id;
     const problems = await sequelize.query(
       `SELECT p.id, p.title, p.description, p.status,
               u.first_name AS author_first_name, u.last_name AS author_last_name
@@ -84,7 +87,7 @@ const getUserProblems = async (req, res) => {
 const createProblem = async (req, res) => {
   try {
     const { title, description, ambassador_id } = req.body;
-    const user_id = req.user?.id;
+    const user_id = req.user.id;
     if (!title || !description) {
       return res.status(400).json({ message: "Назва та опис обов'язкові." });
     }
@@ -109,7 +112,7 @@ const deleteProblem = async (req, res) => {
       `DELETE FROM problems WHERE id = :id`,
       { replacements: { id }, type: QueryTypes.DELETE }
     );
-    if (!result || result[0] === 0) {
+    if (!result || result[1] === 0) {
       return res.status(404).json({ message: "Проблема не знайдена" });
     }
     res.status(200).json({ message: "Проблему успішно видалено" });
