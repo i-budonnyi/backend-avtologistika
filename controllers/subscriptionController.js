@@ -43,7 +43,7 @@ const getSubscriptions = async (req, res) => {
                     WHEN s.idea_id IS NOT NULL THEN 'idea' 
                     WHEN s.problem_id IS NOT NULL THEN 'problem'
                 END AS type,
-                COALESCE(b.user_id, i.user_id, p.user_id) AS author_id,
+                COALESCE(b.user_id, i.user_id, p.user_id) AS user_id,
                 u.first_name AS author_first_name,
                 u.last_name AS author_last_name
              FROM subscriptions s

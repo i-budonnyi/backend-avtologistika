@@ -4,8 +4,8 @@ const BlogPost = require("../models/blogPost");
 // Створення посту
 exports.createPost = async (req, res) => {
   try {
-    const { title, content, author_id } = req.body;
-    const post = await BlogPost.create({ title, content, author_id });
+    const { title, content, user_id } = req.body;
+    const post = await BlogPost.create({ title, content, user_id });
     res.status(201).json(post);
   } catch (error) {
     res.status(500).json({ error: error.message });
