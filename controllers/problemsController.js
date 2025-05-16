@@ -4,7 +4,7 @@ const jwt = require("jsonwebtoken");
 
 const JWT_SECRET = process.env.JWT_SECRET || "your_secret_key";
 
-// ✅ Middleware для перевірки JWT
+// Middleware для перевірки JWT
 const authenticateUser = (req, res, next) => {
   const authHeader = req.headers.authorization;
   if (!authHeader || !authHeader.startsWith("Bearer ")) {
@@ -25,7 +25,7 @@ const authenticateUser = (req, res, next) => {
   }
 };
 
-// ✅ Отримати всіх амбасадорів
+// Отримати всіх амбасадорів
 const getAllAmbassadors = async (req, res) => {
   try {
     const ambassadors = await sequelize.query(
@@ -39,7 +39,7 @@ const getAllAmbassadors = async (req, res) => {
   }
 };
 
-// ✅ Отримати всі проблеми
+// Отримати всі проблеми
 const getAllProblems = async (req, res) => {
   try {
     const problems = await sequelize.query(
@@ -47,7 +47,7 @@ const getAllProblems = async (req, res) => {
               u.first_name AS author_first_name, u.last_name AS author_last_name,
               a.id AS ambassador_id, a.first_name AS ambassador_first_name, a.last_name AS ambassador_last_name
        FROM problems p
-       LEFT JOIN users u ON p.user_id = u.id
+       LEFT JOIN users u ON p.author_id = u.id
        LEFT JOIN ambassadors a ON p.ambassador_id = a.id`,
       { type: QueryTypes.SELECT }
     );
@@ -58,7 +58,7 @@ const getAllProblems = async (req, res) => {
   }
 };
 
-// ✅ Отримати проблеми користувача
+// Отримати проблеми користувача
 const getUserProblems = async (req, res) => {
   try {
     const userId = req.user?.id;
@@ -68,8 +68,8 @@ const getUserProblems = async (req, res) => {
       `SELECT p.id, p.title, p.description, p.status,
               u.first_name AS author_first_name, u.last_name AS author_last_name
        FROM problems p
-       LEFT JOIN users u ON p.user_id = u.id
-       WHERE p.user_id = :userId
+       LEFT JOIN users u ON p.author_id = u.id
+       WHERE p.author_id = :userId
        ORDER BY p.created_at DESC`,
       { replacements: { userId }, type: QueryTypes.SELECT }
     );
@@ -80,19 +80,19 @@ const getUserProblems = async (req, res) => {
   }
 };
 
-// ✅ Створити нову проблему
+// Створити нову проблему
 const createProblem = async (req, res) => {
   try {
     const { title, description, ambassador_id } = req.body;
-    const user_id = req.user?.id;
+    const author_id = req.user?.id;
     if (!title || !description) {
       return res.status(400).json({ message: "Назва та опис обов'язкові." });
     }
 
     await sequelize.query(
-      `INSERT INTO problems (user_id, ambassador_id, title, description, status, created_at, updated_at)
-       VALUES (:user_id, :ambassador_id, :title, :description, 'pending', NOW(), NOW())`,
-      { replacements: { user_id, ambassador_id, title, description }, type: QueryTypes.INSERT }
+      `INSERT INTO problems (author_id, ambassador_id, title, description, status, created_at, updated_at)
+       VALUES (:author_id, :ambassador_id, :title, :description, 'pending', NOW(), NOW())`,
+      { replacements: { author_id, ambassador_id, title, description }, type: QueryTypes.INSERT }
     );
     res.status(201).json({ message: "Проблема успішно подана" });
   } catch (error) {
@@ -101,7 +101,7 @@ const createProblem = async (req, res) => {
   }
 };
 
-// ✅ Видалити проблему
+// Видалити проблему
 const deleteProblem = async (req, res) => {
   try {
     const { id } = req.params;
@@ -119,7 +119,7 @@ const deleteProblem = async (req, res) => {
   }
 };
 
-// ✅ Оновити статус проблеми
+// Оновити статус проблеми
 const updateProblemStatus = async (req, res) => {
   try {
     const { id } = req.params;
