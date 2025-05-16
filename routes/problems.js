@@ -1,9 +1,7 @@
 ﻿const express = require("express");
 const router = express.Router();
 const problemsController = require("../controllers/problemsController");
-
-// Middleware для перевірки авторизації
-const { authenticateUser } = problemsController;
+const authenticateUser = require("../middleware/authMiddleware"); // БЕЗ {}!
 
 // ✅ Отримати всі проблеми
 router.get("/", authenticateUser, problemsController.getAllProblems);
