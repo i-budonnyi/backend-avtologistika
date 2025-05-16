@@ -25,29 +25,23 @@ const authenticateUser = (req, res, next) => {
   }
 };
 
-// ✅ Отримати список амбасадорів
+// ✅ Отримати всіх амбасадорів
 const getAllAmbassadors = async (req, res) => {
   try {
-    console.log("[getAllAmbassadors] 🚀 Отримання списку амбасадорів...");
-
     const ambassadors = await sequelize.query(
       `SELECT id, first_name, last_name, email FROM ambassadors`,
       { type: QueryTypes.SELECT }
     );
-
-    console.log("[getAllAmbassadors] ✅ Відправляємо список амбасадорів:", ambassadors);
     res.status(200).json(ambassadors);
   } catch (error) {
-    console.error("[getAllAmbassadors] ❌ Помилка:", error);
+    console.error("[getAllAmbassadors] ❌", error);
     res.status(500).json({ message: "Помилка отримання списку амбасадорів", error: error.message });
   }
 };
 
-// ✅ Отримати всі проблеми (🔧 ЗАМІНЕНО user_ → author_)
+// ✅ Отримати всі проблеми
 const getAllProblems = async (req, res) => {
   try {
-    console.log("[getAllProblems] Запит отримано...");
-
     const problems = await sequelize.query(
       `SELECT p.id, p.title, p.description, p.status, 
               u.first_name AS author_first_name, u.last_name AS author_last_name,
@@ -57,25 +51,18 @@ const getAllProblems = async (req, res) => {
        LEFT JOIN ambassadors a ON p.ambassador_id = a.id`,
       { type: QueryTypes.SELECT }
     );
-
-    console.log(`[getAllProblems] ✅ Отримано ${problems.length} проблем.`);
     res.status(200).json(problems);
   } catch (error) {
-    console.error("[getAllProblems] ❌ Помилка:", error);
+    console.error("[getAllProblems] ❌", error);
     res.status(500).json({ message: "Помилка отримання проблем", error: error.message });
   }
 };
 
-// ✅ Проблеми для конкретного користувача
+// ✅ Отримати проблеми користувача
 const getUserProblems = async (req, res) => {
   try {
-    if (!req.user || !req.user.id) {
-      console.error("[PROBLEMS] ❌ Не вдалося отримати user_id з req.user.");
-      return res.status(401).json({ message: "Необхідно авторизуватися." });
-    }
-
-    const userId = req.user.id;
-    console.log(`[PROBLEMS] 🔍 Отримання проблем для user_id = ${userId}`);
+    const userId = req.user?.id;
+    if (!userId) return res.status(401).json({ message: "Авторизація обов'язкова" });
 
     const problems = await sequelize.query(
       `SELECT p.id, p.title, p.description, p.status,
@@ -86,16 +73,9 @@ const getUserProblems = async (req, res) => {
        ORDER BY p.created_at DESC`,
       { replacements: { userId }, type: QueryTypes.SELECT }
     );
-
-    if (!problems || problems.length === 0) {
-      console.warn("[PROBLEMS] ⚠️ Користувач ще не подав жодної проблеми.");
-      return res.status(200).json([]);
-    }
-
-    console.log(`[PROBLEMS] ✅ Отримано ${problems.length} проблем.`);
     res.status(200).json(problems);
   } catch (error) {
-    console.error("[ERROR] ❌ Помилка отримання проблем користувача:", error);
+    console.error("[getUserProblems] ❌", error);
     res.status(500).json({ message: "Помилка отримання проблем", error: error.message });
   }
 };
@@ -103,26 +83,20 @@ const getUserProblems = async (req, res) => {
 // ✅ Створити нову проблему
 const createProblem = async (req, res) => {
   try {
-    console.log("[createProblem] Запит на створення нової проблеми...");
-
-    if (!req.user || !req.user.id) {
-      console.error("[createProblem] ❌ Не вдалося отримати user_id з req.user.");
-      return res.status(401).json({ message: "Авторизація потрібна." });
-    }
-
     const { title, description, ambassador_id } = req.body;
-    const user_id = req.user.id;
+    const user_id = req.user?.id;
+    if (!title || !description) {
+      return res.status(400).json({ message: "Назва та опис обов'язкові." });
+    }
 
     await sequelize.query(
       `INSERT INTO problems (user_id, ambassador_id, title, description, status, created_at, updated_at)
        VALUES (:user_id, :ambassador_id, :title, :description, 'pending', NOW(), NOW())`,
       { replacements: { user_id, ambassador_id, title, description }, type: QueryTypes.INSERT }
     );
-
-    console.log("[createProblem] ✅ Проблема успішно створена.");
     res.status(201).json({ message: "Проблема успішно подана" });
   } catch (error) {
-    console.error("[createProblem] ❌ Помилка створення проблеми:", error);
+    console.error("[createProblem] ❌", error);
     res.status(500).json({ message: "Помилка створення проблеми", error: error.message });
   }
 };
@@ -130,36 +104,27 @@ const createProblem = async (req, res) => {
 // ✅ Видалити проблему
 const deleteProblem = async (req, res) => {
   try {
-    console.log("[deleteProblem] Запит отримано...");
     const { id } = req.params;
-
     const result = await sequelize.query(
       `DELETE FROM problems WHERE id = :id`,
       { replacements: { id }, type: QueryTypes.DELETE }
     );
-
     if (!result || result[0] === 0) {
-      console.error(`[deleteProblem] ❌ Проблему з ID ${id} не знайдено.`);
       return res.status(404).json({ message: "Проблема не знайдена" });
     }
-
-    console.log(`[deleteProblem] ✅ Проблему з ID ${id} видалено.`);
     res.status(200).json({ message: "Проблему успішно видалено" });
   } catch (error) {
-    console.error("[deleteProblem] ❌ Помилка видалення проблеми:", error);
+    console.error("[deleteProblem] ❌", error);
     res.status(500).json({ message: "Помилка видалення проблеми", error: error.message });
   }
 };
 
-// ✅ Оновити статус
+// ✅ Оновити статус проблеми
 const updateProblemStatus = async (req, res) => {
   try {
-    console.log("[updateProblemStatus] 🔄 Оновлення статусу проблеми...");
     const { id } = req.params;
     const { status } = req.body;
-
     if (!id || !status) {
-      console.error("[updateProblemStatus] ❌ Відсутні дані.");
       return res.status(400).json({ message: "ID і статус обов'язкові." });
     }
 
@@ -167,16 +132,13 @@ const updateProblemStatus = async (req, res) => {
       `UPDATE problems SET status = :status WHERE id = :id`,
       { replacements: { status, id }, type: QueryTypes.UPDATE }
     );
-
-    console.log(`[updateProblemStatus] ✅ Статус проблеми ID=${id} оновлено.`);
     res.status(200).json({ message: "Статус проблеми успішно оновлено." });
   } catch (error) {
-    console.error("[updateProblemStatus] ❌ Помилка оновлення статусу:", error);
+    console.error("[updateProblemStatus] ❌", error);
     res.status(500).json({ message: "Помилка оновлення статусу", error: error.message });
   }
 };
 
-// ✅ Експорт
 module.exports = {
   getAllProblems,
   getUserProblems,
