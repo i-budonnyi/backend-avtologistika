@@ -1,6 +1,4 @@
 const jwt = require("jsonwebtoken");
-const User = require("../models/users");
-const Ambassador = require("../models/Ambassador");
 
 const JWT_SECRET = process.env.JWT_SECRET || "your_secret_key";
 
@@ -18,23 +16,7 @@ const authenticateUser = async (req, res, next) => {
 
     console.log("[AUTH] ✅ Токен підтверджено, user_id:", decoded.user_id);
 
-    // Отримання користувача разом із амбасадором
-    const user = await User.findByPk(decoded.user_id, {
-      include: [
-        {
-          model: Ambassador,
-          as: "user_ambassador",
-        },
-      ],
-      attributes: { exclude: ["createdAt", "updatedAt"] },
-    });
-
-    if (!user) {
-      console.error("[AUTH] ❌ Невалідний токен або користувач не існує.");
-      return res.status(401).json({ message: "Невалідний токен або користувач не існує." });
-    }
-
-    req.user = user;
+    req.user = { id: decoded.user_id, role: decoded.role || null };
     next();
   } catch (error) {
     console.error("[AUTH] ❌ Помилка перевірки токена:", error.message);
@@ -42,4 +24,4 @@ const authenticateUser = async (req, res, next) => {
   }
 };
 
-module.exports = { authenticateUser }; // ✅ Виправлено експорт
+module.exports = { authenticateUser };
