@@ -7,7 +7,10 @@ exports.getOwnProfile = async (req, res) => {
     const userId = req.user.id;
 
     const [user] = await sequelize.query(
-      "SELECT id, name, email FROM users WHERE id = :userId LIMIT 1",
+      `SELECT id, name AS first_name, surname AS last_name, email, phone
+       FROM users
+       WHERE id = :userId
+       LIMIT 1`,
       {
         replacements: { userId },
         type: QueryTypes.SELECT
@@ -29,20 +32,35 @@ exports.getOwnProfile = async (req, res) => {
 exports.updateOwnProfile = async (req, res) => {
   try {
     const userId = req.user.id;
-    const { name, email } = req.body;
+    const { name, surname, email, phone, password } = req.body;
 
-    // Оновити дані
-    await sequelize.query(
-      `UPDATE users SET name = :name, email = :email WHERE id = :userId`,
-      {
-        replacements: { name, email, userId },
-        type: QueryTypes.UPDATE
-      }
-    );
+    const updates = [];
+    if (name) updates.push(`name = :name`);
+    if (surname) updates.push(`surname = :surname`);
+    if (email) updates.push(`email = :email`);
+    if (phone) updates.push(`phone = :phone`);
+    if (password) updates.push(`password = crypt(:password, gen_salt('bf'))`);
 
-    // Повторно зчитати оновлені дані
+    if (updates.length === 0) {
+      return res.status(400).json({ message: "Немає даних для оновлення" });
+    }
+
+    const updateQuery = `
+      UPDATE users
+      SET ${updates.join(", ")}
+      WHERE id = :userId
+    `;
+
+    await sequelize.query(updateQuery, {
+      replacements: { userId, name, surname, email, phone, password },
+      type: QueryTypes.UPDATE
+    });
+
     const [updatedUser] = await sequelize.query(
-      "SELECT id, name, email FROM users WHERE id = :userId LIMIT 1",
+      `SELECT id, name AS first_name, surname AS last_name, email, phone
+       FROM users
+       WHERE id = :userId
+       LIMIT 1`,
       {
         replacements: { userId },
         type: QueryTypes.SELECT
