@@ -141,20 +141,16 @@ const getIdeasForAmbassador = async (req, res) => {
         console.log(`🛠 [getIdeasForAmbassador] SQL-запит на ідеї для ID=${ambassadorId}`);
 
         const ideas = await sequelize.query(
-            `SELECT i.id, i.title, i.description, i.status, u.first_name AS author_name, u.email AS author_email
+            `SELECT i.id, i.title, i.description, i.status, 
+                    u.first_name AS author_name, u.email AS author_email
              FROM ideas i
              JOIN users u ON i.user_id = u.id
              WHERE i.ambassador_id = :ambassadorId`,
             { replacements: { ambassadorId }, type: QueryTypes.SELECT }
         );
 
-        if (!ideas.length) {
-            console.warn("⚠️ [getIdeasForAmbassador] У амбасадора немає ідей");
-            return res.status(200).json({ message: "Цей амбасадор ще не має ідей." });
-        }
-
         console.log(`✅ [getIdeasForAmbassador] Отримано ${ideas.length} ідей`);
-        res.status(200).json(ideas);
+        res.status(200).json(ideas); // Навіть якщо їх 0 — повертається []
     } catch (error) {
         console.error("❌ [getIdeasForAmbassador] Помилка:", error.message);
         res.status(500).json({ message: "Помилка отримання ідей", error: error.message });
