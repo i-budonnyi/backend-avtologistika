@@ -3,12 +3,12 @@ const router = express.Router();
 const ambassadorController = require("../controllers/ambassadorController");
 const authenticateToken = require("../middleware/authMiddleware");
 
-// 🔍 Лог для перевірки імпортів
 console.log("[DEBUG] Імпортовані функції:", {
   getLoggedAmbassador: ambassadorController.getLoggedAmbassador,
   getAllAmbassadors: ambassadorController.getAllAmbassadors,
   getAmbassadorById: ambassadorController.getAmbassadorById,
   getIdeasForAmbassador: ambassadorController.getIdeasForAmbassador,
+  updateIdeaStatus: ambassadorController.updateIdeaStatus,
   authenticateToken
 });
 
@@ -64,6 +64,16 @@ router.get("/:id/ideas", async (req, res, next) => {
     await ambassadorController.getIdeasForAmbassador(req, res);
   } catch (error) {
     console.error("[ERROR] 🔴 Помилка у getIdeasForAmbassador:", error.message);
+    next(error);
+  }
+});
+
+// ✅ Зміна статусу ідеї амбасадором
+router.patch("/update-status", authenticateToken, async (req, res, next) => {
+  try {
+    await ambassadorController.updateIdeaStatus(req, res);
+  } catch (error) {
+    console.error("[ERROR] 🔴 Помилка у updateIdeaStatus:", error.message);
     next(error);
   }
 });

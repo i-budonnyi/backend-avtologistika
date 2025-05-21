@@ -38,7 +38,6 @@ const getLoggedAmbassador = async (req, res) => {
   logRequest(req);
   try {
     if (!req.user || !req.user.id) {
-      console.warn("❌ [getLoggedAmbassador] Токен не містить userId!");
       return res.status(401).json({ message: "Не авторизований" });
     }
 
@@ -51,13 +50,11 @@ const getLoggedAmbassador = async (req, res) => {
     );
 
     if (!ambassador.length) {
-      console.warn(`❌ [getLoggedAmbassador] Амбасадора не знайдено user_id=${userId}`);
       return res.status(404).json({ message: "Амбасадора не знайдено" });
     }
 
     res.status(200).json(ambassador[0]);
   } catch (error) {
-    console.error("❌ [getLoggedAmbassador] Помилка:", error.message);
     res.status(500).json({ message: "Помилка отримання амбасадора", error: error.message });
   }
 };
@@ -126,10 +123,52 @@ const getIdeasForAmbassador = async (req, res) => {
   }
 };
 
+const updateIdeaStatus = async (req, res) => {
+  logRequest(req);
+  try {
+    const { idea_id, new_status } = req.body;
+    const userId = req.user?.id;
+
+    if (!idea_id || !new_status) {
+      return res.status(400).json({ message: "Необхідно передати idea_id і new_status" });
+    }
+
+    const ambassador = await sequelize.query(
+      `SELECT id FROM ambassadors WHERE user_id = :userId`,
+      { replacements: { userId }, type: QueryTypes.SELECT }
+    );
+
+    if (!ambassador.length) {
+      return res.status(403).json({ message: "Доступ заборонено — не амбасадор" });
+    }
+
+    const result = await sequelize.query(
+      `UPDATE ideas SET status = :new_status WHERE id = :idea_id AND ambassador_id = :ambassadorId RETURNING *`,
+      {
+        replacements: {
+          new_status,
+          idea_id,
+          ambassadorId: ambassador[0].id,
+        },
+        type: QueryTypes.UPDATE,
+      }
+    );
+
+    if (!result[1]?.length) {
+      return res.status(404).json({ message: "Ідея не знайдена або не належить цьому амбасадору." });
+    }
+
+    res.status(200).json({ message: "Статус оновлено", updated: result[1][0] });
+  } catch (error) {
+    res.status(500).json({ message: "Помилка оновлення статусу", error: error.message });
+  }
+};
+
 module.exports = {
   authenticateToken,
   getLoggedAmbassador,
   getAmbassadorById,
   getAllAmbassadors,
   getIdeasForAmbassador,
+  updateIdeaStatus,
 };

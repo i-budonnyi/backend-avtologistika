@@ -1,4 +1,4 @@
-// 📈 server.js — головний файл сервера Express
+﻿// 📈 server.js — головний файл сервера Express
 const express = require("express");
 const cors = require("cors");
 const fs = require("fs");
@@ -15,10 +15,10 @@ const app = express();
 const PORT = process.env.PORT || 10000;
 const JWT_SECRET = process.env.JWT_SECRET || "your_secret_key";
 
-// ✅ CORS
+// ✅ CORS — ДОДАНО PATCH
 app.use(cors({
   origin: "https://leanavtologistika.netlify.app",
-  methods: ["GET", "POST", "PUT", "DELETE"],
+  methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
   allowedHeaders: ["Content-Type", "Authorization"],
   credentials: true,
   optionsSuccessStatus: 200
@@ -30,7 +30,7 @@ app.use(express.json());
 // ✅ Заголовки Access-Control
 app.use((req, res, next) => {
   res.setHeader("Access-Control-Allow-Origin", "https://leanavtologistika.netlify.app");
-  res.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE");
+  res.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, PATCH, OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
   res.setHeader("Content-Type", "application/json; charset=utf-8");
   next();
