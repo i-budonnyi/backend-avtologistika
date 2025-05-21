@@ -105,7 +105,7 @@ const getIdeasForAmbassador = async (req, res) => {
       return res.status(400).json({ message: "ID користувача не передано або некоректний" });
     }
 
-    // Знайти амбасадора по user_id
+    // Знаходимо амбасадора по user_id
     const ambassador = await sequelize.query(
       `SELECT id FROM ambassadors WHERE user_id = :userId LIMIT 1`,
       { replacements: { userId }, type: QueryTypes.SELECT }
