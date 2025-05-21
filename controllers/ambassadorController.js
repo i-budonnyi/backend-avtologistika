@@ -150,10 +150,66 @@ const updateIdeaStatus = async (req, res) => {
       return res.status(400).json({ message: "Необхідно передати idea_id і new_status" });
     }
 
-    // 🛡 Перевірка допустимих значень
     if (!VALID_STATUSES.includes(new_status)) {
       return res.status(400).json({ message: `Статус "${new_status}" не дозволений.` });
     }
+
+    if (new_status !== AMBASSADOR_ALLOWED_STATUS) {
+      return res.status(403).json({
+        message: `Амбасадору дозволено встановити лише статус: "${AMBASSADOR_ALLOWED_STATUS}"`,
+      });
+    }
+
+    const [ambassador] = await sequelize.query(
+      `SELECT id FROM ambassadors WHERE user_id = :userId LIMIT 1`,
+      { replacements: { userId }, type: QueryTypes.SELECT }
+    );
+
+    if (!ambassador) {
+      return res.status(403).json({ message: "Доступ заборонено — не амбасадор" });
+    }
+
+    // 🔍 Лог перед оновленням
+    console.log("👉 Параметри запиту:", {
+      idea_id,
+      new_status,
+      ambassador_id: ambassador.id
+    });
+
+    const updated = await sequelize.query(
+      `UPDATE ideas
+       SET status = :new_status
+       WHERE id = :idea_id AND ambassador_id = :ambassador_id
+       RETURNING id, title, status`,
+      {
+        replacements: {
+          idea_id,
+          new_status,
+          ambassador_id: ambassador.id
+        },
+        type: QueryTypes.UPDATE
+      }
+    );
+
+    const updatedRows = updated[0];
+
+    if (!updatedRows || updatedRows.length === 0) {
+      return res.status(404).json({
+        message: "Ідея не знайдена або не належить цьому амбасадору."
+      });
+    }
+
+    console.log("✅ Статус оновлено:", updatedRows[0]);
+
+    res.json({
+      message: "Статус оновлено успішно",
+      updated: updatedRows[0],
+    });
+  } catch (error) {
+    console.error("❌ Помилка при оновленні статусу:", error);
+    res.status(500).json({ message: "Помилка оновлення статусу", error: error.message });
+  }
+};
 
     // ✋ Амбасадор може лише "до_секретаря"
     if (new_status !== AMBASSADOR_ALLOWED_STATUS) {
