@@ -100,10 +100,22 @@ const getAllAmbassadors = async (req, res) => {
 const getIdeasForAmbassador = async (req, res) => {
   logRequest(req);
   try {
-    const ambassadorId = req.params.id;
-    if (!ambassadorId || isNaN(ambassadorId)) {
-      return res.status(400).json({ message: "ID амбасадора не передано або некоректний" });
+    const userId = req.params.id;
+    if (!userId || isNaN(userId)) {
+      return res.status(400).json({ message: "ID користувача не передано або некоректний" });
     }
+
+    // Знайти амбасадора по user_id
+    const ambassador = await sequelize.query(
+      `SELECT id FROM ambassadors WHERE user_id = :userId LIMIT 1`,
+      { replacements: { userId }, type: QueryTypes.SELECT }
+    );
+
+    if (!ambassador.length) {
+      return res.status(404).json({ message: "Амбасадора не знайдено для цього користувача." });
+    }
+
+    const ambassadorId = ambassador[0].id;
 
     const ideas = await sequelize.query(
       `SELECT i.id, i.title, i.description, i.status, i.user_id,
