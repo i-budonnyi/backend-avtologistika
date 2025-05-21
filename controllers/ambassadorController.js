@@ -4,6 +4,15 @@ const sequelize = require("../config/database");
 
 const JWT_SECRET = process.env.JWT_SECRET || "your_secret_key";
 
+const VALID_STATUSES = [
+  "нове",
+  "очікує",
+  "до_секретаря",
+  "відхилено",
+  "відхилено_з_переглядом",
+  "відхилено_на_доопрацювання"
+];
+
 // 🧾 Логування
 const logRequest = (req) => {
   console.log(`\n--- 📡 [INCOMING REQUEST] ${req.method} ${req.originalUrl} ---`);
@@ -135,6 +144,10 @@ const updateIdeaStatus = async (req, res) => {
 
     if (!idea_id || !new_status) {
       return res.status(400).json({ message: "Необхідно передати idea_id і new_status" });
+    }
+
+    if (!VALID_STATUSES.includes(new_status)) {
+      return res.status(400).json({ message: `Недійсний статус. Дозволено: ${VALID_STATUSES.join(", ")}` });
     }
 
     const [ambassador] = await sequelize.query(
