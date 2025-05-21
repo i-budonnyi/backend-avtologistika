@@ -4,19 +4,12 @@ const sequelize = require("../config/database");
 
 const JWT_SECRET = process.env.JWT_SECRET || "your_secret_key";
 
-const VALID_STATUSES = [
-  "нове",
-  "очікує",
-  "до_секретаря",
-  "відхилено",
-  "відхилено_з_переглядом",
-  "відхилено_на_доопрацювання"
-];
-
+// Статус, який дозволено амбасадору
 const AMBASSADOR_ALLOWED_STATUS = "до_секретаря";
 
+// Логування запитів
 const logRequest = (req) => {
-  console.log(`\n--- 📡 [INCOMING REQUEST] ${req.method} ${req.originalUrl} ---`);
+  console.log(`\n--- 📡 [REQUEST] ${req.method} ${req.originalUrl} ---`);
   console.log("🌐 IP:", req.ip);
   console.log("📥 Headers:", req.headers);
   if (req.body && Object.keys(req.body).length > 0) {
@@ -24,6 +17,7 @@ const logRequest = (req) => {
   }
 };
 
+// Авторизація
 const authenticateToken = (req, res, next) => {
   logRequest(req);
   const authHeader = req.headers.authorization;
@@ -41,6 +35,7 @@ const authenticateToken = (req, res, next) => {
   }
 };
 
+// Отримати профіль авторизованого амбасадора
 const getLoggedAmbassador = async (req, res) => {
   try {
     const userId = req.user?.id;
@@ -59,6 +54,7 @@ const getLoggedAmbassador = async (req, res) => {
   }
 };
 
+// Отримати амбасадора за ID
 const getAmbassadorById = async (req, res) => {
   logRequest(req);
   try {
@@ -83,6 +79,7 @@ const getAmbassadorById = async (req, res) => {
   }
 };
 
+// Отримати всіх амбасадорів
 const getAllAmbassadors = async (req, res) => {
   logRequest(req);
   try {
@@ -96,12 +93,13 @@ const getAllAmbassadors = async (req, res) => {
   }
 };
 
+// Отримати ідеї для амбасадора
 const getIdeasForAmbassador = async (req, res) => {
   logRequest(req);
   try {
     const userId = req.params.id;
     if (!userId || isNaN(userId)) {
-      return res.status(400).json({ message: "ID користувача не передано або некоректний" });
+      return res.status(400).json({ message: "Некоректний ID користувача" });
     }
 
     const [ambassador] = await sequelize.query(
@@ -110,7 +108,7 @@ const getIdeasForAmbassador = async (req, res) => {
     );
 
     if (!ambassador) {
-      return res.status(404).json({ message: "Амбасадора не знайдено для цього користувача." });
+      return res.status(404).json({ message: "Амбасадора не знайдено" });
     }
 
     const ideas = await sequelize.query(
@@ -131,6 +129,7 @@ const getIdeasForAmbassador = async (req, res) => {
   }
 };
 
+// Оновити статус ідеї (тільки для амбасадора)
 const updateIdeaStatus = async (req, res) => {
   logRequest(req);
   try {
@@ -138,16 +137,12 @@ const updateIdeaStatus = async (req, res) => {
     const userId = req.user?.id;
 
     if (!idea_id || !new_status) {
-      return res.status(400).json({ message: "Необхідно передати idea_id і new_status" });
-    }
-
-    if (!VALID_STATUSES.includes(new_status)) {
-      return res.status(400).json({ message: `Статус "${new_status}" не дозволений.` });
+      return res.status(400).json({ message: "Потрібно вказати idea_id і new_status" });
     }
 
     if (new_status !== AMBASSADOR_ALLOWED_STATUS) {
       return res.status(403).json({
-        message: `Амбасадору дозволено встановити лише статус: "${AMBASSADOR_ALLOWED_STATUS}"`,
+        message: `Амбасадору дозволено встановлювати лише статус "${AMBASSADOR_ALLOWED_STATUS}"`,
       });
     }
 
@@ -160,12 +155,6 @@ const updateIdeaStatus = async (req, res) => {
       return res.status(403).json({ message: "Доступ заборонено — не амбасадор" });
     }
 
-    console.log("👉 Параметри запиту:", {
-      idea_id,
-      new_status,
-      ambassador_id: ambassador.id
-    });
-
     const [updatedRows] = await sequelize.query(
       `UPDATE ideas
        SET status = :new_status
@@ -175,30 +164,27 @@ const updateIdeaStatus = async (req, res) => {
         replacements: {
           idea_id,
           new_status,
-          ambassador_id: ambassador.id
+          ambassador_id: ambassador.id,
         },
-        type: QueryTypes.UPDATE
+        type: QueryTypes.UPDATE,
       }
     );
 
     if (!updatedRows || updatedRows.length === 0) {
-      return res.status(404).json({
-        message: "Ідея не знайдена або не належить цьому амбасадору."
-      });
+      return res.status(404).json({ message: "Ідея не знайдена або не належить цьому амбасадору" });
     }
-
-    console.log("✅ Статус оновлено:", updatedRows[0]);
 
     res.json({
       message: "Статус оновлено успішно",
       updated: updatedRows[0],
     });
   } catch (error) {
-    console.error("❌ Помилка при оновленні статусу:", error);
+    console.error("❌ updateIdeaStatus error:", error);
     res.status(500).json({ message: "Помилка оновлення статусу", error: error.message });
   }
 };
 
+// Експорт
 module.exports = {
   authenticateToken,
   getLoggedAmbassador,
