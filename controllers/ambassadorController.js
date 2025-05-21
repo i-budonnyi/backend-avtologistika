@@ -150,7 +150,12 @@ const updateIdeaStatus = async (req, res) => {
       return res.status(400).json({ message: "Необхідно передати idea_id і new_status" });
     }
 
-    // ✋ Перевірка: лише до_секретаря доступний для амбасадора
+    // 🛡 Перевірка допустимих значень
+    if (!VALID_STATUSES.includes(new_status)) {
+      return res.status(400).json({ message: `Статус "${new_status}" не дозволений.` });
+    }
+
+    // ✋ Амбасадор може лише "до_секретаря"
     if (new_status !== AMBASSADOR_ALLOWED_STATUS) {
       return res.status(403).json({
         message: `Амбасадору дозволено встановити лише статус: "${AMBASSADOR_ALLOWED_STATUS}"`,
@@ -166,8 +171,11 @@ const updateIdeaStatus = async (req, res) => {
       return res.status(403).json({ message: "Доступ заборонено — не амбасадор" });
     }
 
-    const result = await sequelize.query(
-      `UPDATE ideas SET status = :new_status WHERE id = :idea_id AND ambassador_id = :ambassadorId RETURNING *`,
+    const [result, updatedRows] = await sequelize.query(
+      `UPDATE ideas
+       SET status = :new_status
+       WHERE id = :idea_id AND ambassador_id = :ambassadorId
+       RETURNING id, title, status`,
       {
         replacements: {
           idea_id,
@@ -178,16 +186,22 @@ const updateIdeaStatus = async (req, res) => {
       }
     );
 
-    if (!result[1]?.length) {
+    if (!updatedRows || updatedRows.length === 0) {
       return res.status(404).json({ message: "Ідея не знайдена або не належить цьому амбасадору." });
     }
 
-    res.json({ message: "Статус оновлено", updated: result[1][0] });
+    console.log("✅ Статус успішно оновлено:", updatedRows[0]);
+
+    res.json({
+      message: "Статус оновлено успішно",
+      updated: updatedRows[0],
+    });
   } catch (error) {
-    console.error("❌ [updateIdeaStatus] error:", error);
+    console.error("❌ Помилка при оновленні статусу:", error);
     res.status(500).json({ message: "Помилка оновлення статусу", error: error.message });
   }
 };
+
 
 // Повний експорт
 module.exports = {
