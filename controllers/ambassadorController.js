@@ -4,7 +4,6 @@ const sequelize = require("../config/database");
 
 const JWT_SECRET = process.env.JWT_SECRET || "your_secret_key";
 
-// Дозволені статуси в загальному
 const VALID_STATUSES = [
   "нове",
   "очікує",
@@ -14,10 +13,8 @@ const VALID_STATUSES = [
   "відхилено_на_доопрацювання"
 ];
 
-// Лише цей статус дозволений для амбасадора
 const AMBASSADOR_ALLOWED_STATUS = "до_секретаря";
 
-// Логування
 const logRequest = (req) => {
   console.log(`\n--- 📡 [INCOMING REQUEST] ${req.method} ${req.originalUrl} ---`);
   console.log("🌐 IP:", req.ip);
@@ -27,7 +24,6 @@ const logRequest = (req) => {
   }
 };
 
-// Авторизація
 const authenticateToken = (req, res, next) => {
   logRequest(req);
   const authHeader = req.headers.authorization;
@@ -45,7 +41,6 @@ const authenticateToken = (req, res, next) => {
   }
 };
 
-// Отримання авторизованого амбасадора
 const getLoggedAmbassador = async (req, res) => {
   try {
     const userId = req.user?.id;
@@ -64,7 +59,6 @@ const getLoggedAmbassador = async (req, res) => {
   }
 };
 
-// Отримання амбасадора за ID
 const getAmbassadorById = async (req, res) => {
   logRequest(req);
   try {
@@ -89,7 +83,6 @@ const getAmbassadorById = async (req, res) => {
   }
 };
 
-// Всі амбасадори
 const getAllAmbassadors = async (req, res) => {
   logRequest(req);
   try {
@@ -103,7 +96,6 @@ const getAllAmbassadors = async (req, res) => {
   }
 };
 
-// Ідеї, які обрали цього амбасадора
 const getIdeasForAmbassador = async (req, res) => {
   logRequest(req);
   try {
@@ -139,7 +131,6 @@ const getIdeasForAmbassador = async (req, res) => {
   }
 };
 
-// Оновлення статусу ідеї
 const updateIdeaStatus = async (req, res) => {
   logRequest(req);
   try {
@@ -169,14 +160,13 @@ const updateIdeaStatus = async (req, res) => {
       return res.status(403).json({ message: "Доступ заборонено — не амбасадор" });
     }
 
-    // 🔍 Лог перед оновленням
     console.log("👉 Параметри запиту:", {
       idea_id,
       new_status,
       ambassador_id: ambassador.id
     });
 
-    const updated = await sequelize.query(
+    const [updatedRows] = await sequelize.query(
       `UPDATE ideas
        SET status = :new_status
        WHERE id = :idea_id AND ambassador_id = :ambassador_id
@@ -190,8 +180,6 @@ const updateIdeaStatus = async (req, res) => {
         type: QueryTypes.UPDATE
       }
     );
-
-    const updatedRows = updated[0];
 
     if (!updatedRows || updatedRows.length === 0) {
       return res.status(404).json({
@@ -211,55 +199,6 @@ const updateIdeaStatus = async (req, res) => {
   }
 };
 
-    // ✋ Амбасадор може лише "до_секретаря"
-    if (new_status !== AMBASSADOR_ALLOWED_STATUS) {
-      return res.status(403).json({
-        message: `Амбасадору дозволено встановити лише статус: "${AMBASSADOR_ALLOWED_STATUS}"`,
-      });
-    }
-
-    const [ambassador] = await sequelize.query(
-      `SELECT id FROM ambassadors WHERE user_id = :userId LIMIT 1`,
-      { replacements: { userId }, type: QueryTypes.SELECT }
-    );
-
-    if (!ambassador) {
-      return res.status(403).json({ message: "Доступ заборонено — не амбасадор" });
-    }
-
-    const [result, updatedRows] = await sequelize.query(
-      `UPDATE ideas
-       SET status = :new_status
-       WHERE id = :idea_id AND ambassador_id = :ambassadorId
-       RETURNING id, title, status`,
-      {
-        replacements: {
-          idea_id,
-          new_status,
-          ambassadorId: ambassador.id,
-        },
-        type: QueryTypes.UPDATE,
-      }
-    );
-
-    if (!updatedRows || updatedRows.length === 0) {
-      return res.status(404).json({ message: "Ідея не знайдена або не належить цьому амбасадору." });
-    }
-
-    console.log("✅ Статус успішно оновлено:", updatedRows[0]);
-
-    res.json({
-      message: "Статус оновлено успішно",
-      updated: updatedRows[0],
-    });
-  } catch (error) {
-    console.error("❌ Помилка при оновленні статусу:", error);
-    res.status(500).json({ message: "Помилка оновлення статусу", error: error.message });
-  }
-};
-
-
-// Повний експорт
 module.exports = {
   authenticateToken,
   getLoggedAmbassador,
