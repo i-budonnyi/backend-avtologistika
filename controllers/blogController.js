@@ -1,6 +1,7 @@
 const { QueryTypes } = require("sequelize");
 const jwt = require("jsonwebtoken");
 const sequelize = require("../config/database");
+const { io } = require("../index"); // 📡 WebSocket-підключення
 
 // ✅ Middleware для обов'язкової авторизації
 const authenticateUser = (req, res, next) => {
@@ -76,6 +77,15 @@ const createBlogEntry = async (req, res) => {
       }
     );
 
+    // 📡 WebSocket: повідомляємо всім
+    io.emit("entry_created", {
+      id: result[0].id,
+      title,
+      description,
+      type,
+      user_id: userId,
+    });
+
     res.status(201).json({ message: "Запис створено", id: result[0].id });
   } catch (error) {
     res.status(500).json({ message: "Помилка створення запису", error: error.message });
@@ -114,17 +124,23 @@ const deleteBlogEntry = async (req, res) => {
 
 // ✅ Додати коментар з іменем
 const addComment = async (req, res) => {
-  const { entry_id, entry_type, comment } = req.body; // ✅ тут comment, не text
+  const { entry_id, entry_type, comment } = req.body;
   const user_id = req.user?.user_id;
 
   if (!entry_id || !entry_type || !comment || !user_id) {
-    return res.status(400).json({ error: "Всі поля обов'язкові (entry_id, entry_type, comment, user_id)." });
+    return res.status(400).json({
+      error: "Всі поля обов'язкові (entry_id, entry_type, comment, user_id).",
+    });
   }
 
   const column =
-    entry_type === "blog" ? "blog_id" :
-    entry_type === "idea" ? "idea_id" :
-    entry_type === "problem" ? "problem_id" : null;
+    entry_type === "blog"
+      ? "blog_id"
+      : entry_type === "idea"
+      ? "idea_id"
+      : entry_type === "problem"
+      ? "problem_id"
+      : null;
 
   if (!column) {
     return res.status(400).json({ error: "Невідомий тип запису." });
@@ -141,6 +157,15 @@ const addComment = async (req, res) => {
     );
 
     console.log(`[addComment] ✅ Коментар додано`);
+
+    // 📡 WebSocket: повідомляємо про новий коментар
+    io.emit("new_comment", {
+      entry_id,
+      entry_type,
+      comment,
+      user_id,
+    });
+
     res.status(201).json({ message: "Коментар успішно додано." });
   } catch (err) {
     console.error("[addComment] ❌", err.message);

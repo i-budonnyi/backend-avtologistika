@@ -1,6 +1,7 @@
 const { QueryTypes } = require("sequelize");
 const sequelize = require("../config/database");
 const jwt = require("jsonwebtoken");
+const { io } = require("../index"); // 📡 WebSocket
 
 // 🔧 Створення заявки з перевіркою дубля та зміною статусу ідеї
 const createApplication = async (req, res) => {
@@ -44,6 +45,14 @@ const createApplication = async (req, res) => {
         type: QueryTypes.UPDATE,
       }
     );
+
+    // 📡 WebSocket — повідомляємо про нову заявку
+    io.emit("application_created", {
+      idea_id,
+      user_id,
+      title,
+      type,
+    });
 
     res.status(201).json(newApplication);
   } catch (error) {

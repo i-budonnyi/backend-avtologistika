@@ -1,10 +1,12 @@
-﻿// 📈 server.js — головний файл сервера Express
-const express = require("express");
+﻿const express = require("express");
 const cors = require("cors");
 const fs = require("fs");
 const path = require("path");
 const jwt = require("jsonwebtoken");
 require("dotenv").config();
+
+const http = require("http");                    // ⬅️ Додано
+const { Server } = require("socket.io");         // ⬅️ Додано
 
 const sequelize = require("./config/db");
 const authRoutes = require("./routes/authRoutes");
@@ -12,8 +14,29 @@ const ideaRoutes = require("./routes/ideaRoutes");
 const { register, login } = require("./controllers/authController");
 
 const app = express();
+const server = http.createServer(app);           // ⬅️ створення HTTP-сервера
 const PORT = process.env.PORT || 10000;
 const JWT_SECRET = process.env.JWT_SECRET || "your_secret_key";
+
+// 🔌 Ініціалізація WebSocket
+const io = new Server(server, {
+  cors: {
+    origin: "https://leanavtologistika.netlify.app",
+    methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
+    credentials: true
+  }
+});
+
+io.on("connection", (socket) => {
+  console.log("🟢 WebSocket підключено:", socket.id);
+
+  socket.on("disconnect", () => {
+    console.log("🔴 WebSocket відключено:", socket.id);
+  });
+});
+
+// ⬇️ Експортуємо io для доступу в контролерах
+module.exports.io = io;
 
 // ✅ CORS — ДОДАНО PATCH
 app.use(cors({
@@ -24,10 +47,8 @@ app.use(cors({
   optionsSuccessStatus: 200
 }));
 
-// ✅ JSON парсер
 app.use(express.json());
 
-// ✅ Заголовки Access-Control
 app.use((req, res, next) => {
   res.setHeader("Access-Control-Allow-Origin", "https://leanavtologistika.netlify.app");
   res.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, PATCH, OPTIONS");
@@ -36,7 +57,6 @@ app.use((req, res, next) => {
   next();
 });
 
-// 📝 Логування запитів
 app.use((req, res, next) => {
   const now = new Date().toISOString();
   const log = `[${now}] ${req.method} ${req.originalUrl} — IP: ${req.ip}`;
@@ -64,11 +84,8 @@ const authenticateToken = (req, res, next) => {
   });
 };
 
-// ✅ Прямі маршрути логіну / реєстрації
 app.post("/login", login);
 app.post("/register", register);
-
-// ✅ API-маршрути
 app.use("/api/authRoutes", authRoutes);
 app.use("/api/ideaRoutes", ideaRoutes);
 
@@ -89,13 +106,11 @@ fs.readdirSync(routesDir).forEach((file) => {
   }
 });
 
-// 🛠 Ping endpoint
 app.get("/api/ping", (req, res) => {
   console.log("🔔 Пінг від клієнта: бекенд живий");
   res.status(200).json({ message: "pong" });
 });
 
-// 📤 Логування відповідей
 app.use((req, res, next) => {
   const originalSend = res.send;
   res.send = function (body) {
@@ -120,7 +135,7 @@ sequelize.authenticate()
     process.exit(1);
   });
 
-// 🚀 Запуск сервера
-app.listen(PORT, () => {
-  console.log(`[SERVER] Сервер запущено на порту ${PORT}`);
+// 🚀 Запуск сервера через HTTP-сервер
+server.listen(PORT, () => {
+  console.log(`[SERVER] Сервер Express + WebSocket запущено на порту ${PORT}`);
 });

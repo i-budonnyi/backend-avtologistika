@@ -1,6 +1,7 @@
 const jwt = require("jsonwebtoken");
 const { QueryTypes } = require("sequelize");
 const sequelize = require("../config/database");
+const { io } = require("../index"); // 📡 WebSocket
 
 const JWT_SECRET = process.env.JWT_SECRET || "your_secret_key";
 
@@ -174,9 +175,18 @@ const updateIdeaStatus = async (req, res) => {
       return res.status(404).json({ message: "Ідея не знайдена або не належить цьому амбасадору" });
     }
 
+    const updatedIdea = updatedRows[0];
+
+    // 📡 WebSocket подія
+    io.emit("idea_forwarded_to_secretary", {
+      title: updatedIdea.title,
+      idea_id: updatedIdea.id,
+      secretary_id: ambassador.user_id, // якщо зручно — передаємо назад user_id
+    });
+
     res.json({
       message: "Статус оновлено успішно",
-      updated: updatedRows[0],
+      updated: updatedIdea,
     });
   } catch (error) {
     console.error("❌ updateIdeaStatus error:", error);
