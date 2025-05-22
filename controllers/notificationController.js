@@ -1,8 +1,9 @@
 const pool = require("../config/db");
 
-// ➕ Створити сповіщення
+// ➕ Створити сповіщення з WebSocket
 const createNotification = async (req, res) => {
   const { user_id, message } = req.body;
+  const io = req.app.get("io"); // ⬅️ отримуємо доступ до io
   console.log("📥 [POST] Створення сповіщення:", { user_id, message });
 
   if (!user_id || !message) {
@@ -14,7 +15,13 @@ const createNotification = async (req, res) => {
       `INSERT INTO notifications (user_id, message) VALUES ($1, $2) RETURNING *`,
       [user_id, message]
     );
-    res.status(201).json(result.rows[0]);
+
+    const notification = result.rows[0];
+
+    // 🔔 Надіслати сповіщення через WebSocket на канал user_id
+    io.emit(`notification_${user_id}`, notification);
+
+    res.status(201).json(notification);
   } catch (error) {
     console.error("❌ [createNotification] Помилка:", error);
     res.status(500).json({ message: "Помилка при створенні сповіщення.", error: error.message });
