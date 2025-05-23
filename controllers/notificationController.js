@@ -2,7 +2,8 @@ const pool = require("../config/db");
 
 // ➕ Створити сповіщення з WebSocket
 const createNotification = async (req, res) => {
-  const { user_id, message } = req.body;
+  const { message } = req.body;
+  const user_id = req.user?.id;
   const io = req.app.get("io");
 
   if (!user_id || !message) {
@@ -25,12 +26,12 @@ const createNotification = async (req, res) => {
   }
 };
 
-// 📥 Отримати всі сповіщення користувача
+// 📥 Отримати всі сповіщення користувача з токена
 const getUserNotifications = async (req, res) => {
-  const user_id = req.query.user_id || req.body.user_id;
+  const user_id = req.user?.id;
 
   if (!user_id) {
-    return res.status(400).json({ message: "Не передано user_id." });
+    return res.status(401).json({ message: "Користувач не авторизований." });
   }
 
   try {
@@ -120,10 +121,10 @@ const addCommentToNotification = async (req, res) => {
 
 // 🗑 Видалити всі сповіщення користувача
 const deleteAllNotifications = async (req, res) => {
-  const user_id = req.query.user_id || req.body.user_id;
+  const user_id = req.user?.id;
 
   if (!user_id) {
-    return res.status(400).json({ message: "Не передано user_id." });
+    return res.status(401).json({ message: "Користувач не авторизований." });
   }
 
   try {
