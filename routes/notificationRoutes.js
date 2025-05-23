@@ -9,7 +9,7 @@ const {
   deleteAllNotifications,
 } = require("../controllers/notificationController");
 
-const authenticateUser = require("../middleware/authenticateToken"); // або authenticateToken — головне, щоб збігалося з використанням
+const authenticateUser = require("../middleware/authenticateToken"); // ⚠️ переконайся, що цей файл існує
 
 // ➕ Створити сповіщення
 router.post("/", authenticateUser, addNotification);
