@@ -17,7 +17,12 @@ const createNotification = async (req, res) => {
     );
 
     const notification = result.rows[0];
+
+    // 🔔 Надіслати сповіщення автору
     io.emit(`notification_${user_id}`, notification);
+
+    // 🌍 Надіслати сповіщення всім (глобальний канал)
+    io.emit("notification_all", notification);
 
     res.status(201).json(notification);
   } catch (error) {
