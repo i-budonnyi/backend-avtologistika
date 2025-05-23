@@ -2,11 +2,8 @@ const pool = require("../config/db");
 
 // ➕ Створити сповіщення з WebSocket
 const createNotification = async (req, res) => {
-  const { message } = req.body;
-  const user_id = req.user?.id;
+  const { user_id, message } = req.body;
   const io = req.app.get("io");
-
-  console.log("📥 [POST] Створення сповіщення:", { user_id, message });
 
   if (!user_id || !message) {
     return res.status(400).json({ message: "user_id та message є обов’язковими." });
@@ -28,18 +25,18 @@ const createNotification = async (req, res) => {
   }
 };
 
-// 📥 Отримати всі сповіщення користувача (з токена)
+// 📥 Отримати всі сповіщення користувача
 const getUserNotifications = async (req, res) => {
-  const userId = req.user?.id;
+  const user_id = req.query.user_id || req.body.user_id;
 
-  if (!userId) {
-    return res.status(401).json({ message: "Користувач не авторизований." });
+  if (!user_id) {
+    return res.status(400).json({ message: "Не передано user_id." });
   }
 
   try {
     const result = await pool.query(
       `SELECT * FROM notifications WHERE user_id = $1 ORDER BY created_at DESC`,
-      [userId]
+      [user_id]
     );
     res.status(200).json(result.rows);
   } catch (error) {
@@ -123,14 +120,14 @@ const addCommentToNotification = async (req, res) => {
 
 // 🗑 Видалити всі сповіщення користувача
 const deleteAllNotifications = async (req, res) => {
-  const userId = req.user?.id;
+  const user_id = req.query.user_id || req.body.user_id;
 
-  if (!userId) {
-    return res.status(401).json({ message: "Користувач не авторизований." });
+  if (!user_id) {
+    return res.status(400).json({ message: "Не передано user_id." });
   }
 
   try {
-    await pool.query(`DELETE FROM notifications WHERE user_id = $1`, [userId]);
+    await pool.query(`DELETE FROM notifications WHERE user_id = $1`, [user_id]);
     res.json({ success: true });
   } catch (error) {
     console.error("❌ [deleteAllNotifications] Помилка:", error);
