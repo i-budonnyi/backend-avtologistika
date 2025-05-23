@@ -3,6 +3,7 @@ const router = express.Router();
 const {
   addNotification,
   getUserNotifications,
+  getNotificationsByUserId, // ✅ Додано
   updateNotificationStatus,
   markAsRead,
   addCommentToNotification,
@@ -14,30 +15,11 @@ const verifyAccessToken = require("../middleware/verifyAccessToken"); // 🔐 П
 // 🔔 Створити нове сповіщення
 router.post("/", verifyAccessToken, addNotification);
 
-// 📩 Отримати всі сповіщення поточного користувача (через req.user)
+// 📩 Отримати всі сповіщення поточного користувача
 router.get("/me", verifyAccessToken, getUserNotifications);
 
-// 📥 Отримати сповіщення по userId напряму з URL — для фронту
-router.get("/user/:id", verifyAccessToken, async (req, res) => {
-  const pool = require("../config/db");
-  const userId = req.params.id;
-
-  console.log("📩 [GET /notification/user/:id] Отримання сповіщень для user_id:", userId);
-  console.log("🔐 Authorization:", req.headers.authorization);
-
-  try {
-    const result = await pool.query(
-      `SELECT * FROM notifications WHERE user_id = $1 ORDER BY created_at DESC`,
-      [userId]
-    );
-
-    console.log(`✅ Знайдено ${result.rows.length} сповіщень для користувача ${userId}`);
-    res.status(200).json(result.rows);
-  } catch (error) {
-    console.error("❌ Помилка при виконанні SQL:", error);
-    res.status(500).json({ message: "Помилка при отриманні сповіщень." });
-  }
-});
+// 📥 Отримати сповіщення по userId (для фронту)
+router.get("/user/:id", verifyAccessToken, getNotificationsByUserId);
 
 // 🔄 Оновити статус
 router.patch("/:id/status", verifyAccessToken, updateNotificationStatus);
