@@ -29,6 +29,7 @@ const createNotification = async (req, res) => {
       [user_id, message]
     );
     const notification = result.rows[0];
+
     console.log("✅ Створено сповіщення:", notification);
 
     io.emit(`notification_${user_id}`, notification);
@@ -41,7 +42,7 @@ const createNotification = async (req, res) => {
   }
 };
 
-// 📥 Отримати всі сповіщення користувача
+// 📥 Отримати сповіщення поточного користувача
 const getUserNotifications = async (req, res) => {
   const userId = req.user?.id;
 
@@ -63,6 +64,31 @@ const getUserNotifications = async (req, res) => {
     res.status(200).json(result.rows);
   } catch (error) {
     console.error("❌ SQL помилка при отриманні:", error);
+    res.status(500).json({ message: "Помилка при отриманні сповіщень.", error: error.message });
+  }
+};
+
+// 📩 Отримати сповіщення за конкретним user_id (з фронту)
+const getNotificationsByUserId = async (req, res) => {
+  const { id } = req.params;
+
+  console.log("📥 [GET /notification/user/:id] Отримання сповіщень за ID користувача:", id);
+
+  try {
+    const result = await pool.query(
+      `SELECT * FROM notifications WHERE user_id = $1 ORDER BY created_at DESC`,
+      [id]
+    );
+
+    if (result.rowCount === 0) {
+      console.log(`ℹ️ Для user_id ${id} не знайдено жодного сповіщення`);
+    } else {
+      console.log(`✅ Знайдено ${result.rows.length} сповіщень для user_id ${id}`);
+    }
+
+    res.status(200).json(result.rows);
+  } catch (error) {
+    console.error("❌ SQL помилка при отриманні по ID:", error);
     res.status(500).json({ message: "Помилка при отриманні сповіщень.", error: error.message });
   }
 };
@@ -95,7 +121,7 @@ const updateNotificationStatus = async (req, res) => {
   }
 };
 
-// 🔔 Позначити сповіщення як прочитане
+// ✅ Позначити як прочитане
 const markAsRead = async (req, res) => {
   const { id } = req.params;
 
@@ -168,6 +194,7 @@ const deleteAllNotifications = async (req, res) => {
 module.exports = {
   addNotification: createNotification,
   getUserNotifications,
+  getNotificationsByUserId, // ⬅️ додано окремо для /user/:id
   updateNotificationStatus,
   markAsRead,
   addCommentToNotification,
