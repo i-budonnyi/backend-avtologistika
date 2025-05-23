@@ -1,21 +1,25 @@
 const pool = require("../config/db");
 
+// 🔐 Перевірка токена (опційно)
+const extractUserId = (req) => {
+  if (req.user?.id) return req.user.id;
+  if (req.body?.user_id) return req.body.user_id;
+  return null;
+};
+
 // ➕ Створити сповіщення з WebSocket
 const createNotification = async (req, res) => {
   const io = req.app.get("io");
-
-  const user_id = req.user?.id || req.body.user_id;
+  const user_id = extractUserId(req);
   const message = req.body.message;
 
-  console.log("📥 [POST /notification] Створення сповіщення →", {
-    headers: req.headers,
-    userFromToken: req.user,
-    user_id,
-    message,
-  });
+  console.log("📥 [POST /notification] Створення сповіщення:");
+  console.log("🔐 Headers:", req.headers);
+  console.log("👤 req.user:", req.user);
+  console.log("📦 body:", req.body);
 
   if (!user_id || !message) {
-    console.warn("⚠️ Відсутній user_id або message.");
+    console.warn("⚠️ Відсутній user_id або message");
     return res.status(400).json({ message: "user_id та message є обов’язковими." });
   }
 
@@ -24,16 +28,15 @@ const createNotification = async (req, res) => {
       `INSERT INTO notifications (user_id, message) VALUES ($1, $2) RETURNING *`,
       [user_id, message]
     );
-
     const notification = result.rows[0];
-    console.log("✅ [POST /notification] Успішно створено:", notification);
+    console.log("✅ Створено сповіщення:", notification);
 
     io.emit(`notification_${user_id}`, notification);
     io.emit("notification_all", notification);
 
     res.status(201).json(notification);
   } catch (error) {
-    console.error("❌ [POST /notification] SQL помилка:", error);
+    console.error("❌ SQL помилка при створенні:", error);
     res.status(500).json({ message: "Помилка при створенні сповіщення.", error: error.message });
   }
 };
@@ -42,14 +45,12 @@ const createNotification = async (req, res) => {
 const getUserNotifications = async (req, res) => {
   const userId = req.user?.id;
 
-  console.log("📥 [GET /notification/me] Запит сповіщень:", {
-    headers: req.headers,
-    userFromToken: req.user,
-    userId,
-  });
+  console.log("📥 [GET /notification/me] Отримання сповіщень:");
+  console.log("🔐 Headers:", req.headers);
+  console.log("👤 req.user:", req.user);
 
   if (!userId) {
-    console.warn("⚠️ [GET /notification/me] Не авторизований користувач.");
+    console.warn("❌ Не авторизований користувач");
     return res.status(401).json({ message: "Не авторизований користувач." });
   }
 
@@ -61,17 +62,17 @@ const getUserNotifications = async (req, res) => {
     console.log(`✅ Знайдено ${result.rows.length} сповіщень`);
     res.status(200).json(result.rows);
   } catch (error) {
-    console.error("❌ [GET /notification/me] SQL помилка:", error);
+    console.error("❌ SQL помилка при отриманні:", error);
     res.status(500).json({ message: "Помилка при отриманні сповіщень.", error: error.message });
   }
 };
 
-// ✅ Оновити статус
+// ✅ Оновити статус сповіщення
 const updateNotificationStatus = async (req, res) => {
   const { id } = req.params;
   const { status } = req.body;
 
-  console.log("🔄 [PATCH /notification/:id/status] Запит оновлення статусу:", { id, status });
+  console.log("🔄 [PATCH /notification/:id/status] Оновлення статусу:", { id, status });
 
   if (!status) {
     return res.status(400).json({ message: "Статус є обов’язковим." });
@@ -89,12 +90,12 @@ const updateNotificationStatus = async (req, res) => {
 
     res.status(200).json({ message: "Статус оновлено", data: result.rows[0] });
   } catch (error) {
-    console.error("❌ [updateNotificationStatus] SQL помилка:", error);
+    console.error("❌ SQL помилка при оновленні:", error);
     res.status(500).json({ message: "Помилка при оновленні статусу.", error: error.message });
   }
 };
 
-// 🔔 Позначити як прочитане
+// 🔔 Позначити сповіщення як прочитане
 const markAsRead = async (req, res) => {
   const { id } = req.params;
 
@@ -112,17 +113,17 @@ const markAsRead = async (req, res) => {
 
     res.json({ success: true });
   } catch (error) {
-    console.error("❌ [markAsRead] SQL помилка:", error);
+    console.error("❌ SQL помилка при оновленні прочитаності:", error);
     res.status(500).json({ message: "Не вдалося оновити статус прочитаності.", error: error.message });
   }
 };
 
-// 💬 Додати коментар
+// 💬 Додати коментар до сповіщення
 const addCommentToNotification = async (req, res) => {
   const { id } = req.params;
   const { comment } = req.body;
 
-  console.log("💬 [PATCH /notification/:id/comment] Додати коментар:", { id, comment });
+  console.log("💬 [PATCH /notification/:id/comment] Додавання коментаря:", { id, comment });
 
   if (!comment) {
     return res.status(400).json({ message: "Коментар є обов’язковим." });
@@ -140,7 +141,7 @@ const addCommentToNotification = async (req, res) => {
 
     res.status(200).json({ message: "Коментар додано.", data: result.rows[0] });
   } catch (error) {
-    console.error("❌ [addCommentToNotification] SQL помилка:", error);
+    console.error("❌ SQL помилка при коментуванні:", error);
     res.status(500).json({ message: "Помилка при додаванні коментаря.", error: error.message });
   }
 };
@@ -149,7 +150,7 @@ const addCommentToNotification = async (req, res) => {
 const deleteAllNotifications = async (req, res) => {
   const userId = req.user?.id;
 
-  console.log("🗑 [DELETE /notification/me] Видалити сповіщення для користувача:", userId);
+  console.log("🗑 [DELETE /notification/me] Видалення сповіщень користувача:", userId);
 
   if (!userId) {
     return res.status(401).json({ message: "Не авторизований користувач." });
@@ -159,7 +160,7 @@ const deleteAllNotifications = async (req, res) => {
     await pool.query(`DELETE FROM notifications WHERE user_id = $1`, [userId]);
     res.json({ success: true });
   } catch (error) {
-    console.error("❌ [deleteAllNotifications] SQL помилка:", error);
+    console.error("❌ SQL помилка при видаленні:", error);
     res.status(500).json({ message: "Помилка при видаленні сповіщень.", error: error.message });
   }
 };
