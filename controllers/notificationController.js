@@ -2,9 +2,11 @@ const pool = require("../config/db");
 
 // ➕ Створити сповіщення з WebSocket
 const createNotification = async (req, res) => {
-  const { message } = req.body;
-  const user_id = req.user?.id;
   const io = req.app.get("io");
+
+  // Підтримка авторизованого користувача або явного user_id з тіла запиту
+  const user_id = req.user?.id || req.body.user_id;
+  const message = req.body.message;
 
   console.log("📥 [POST] Створення сповіщення:", { user_id, message });
 
