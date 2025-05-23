@@ -2,8 +2,10 @@ const pool = require("../config/db");
 
 // ➕ Створити сповіщення з WebSocket
 const createNotification = async (req, res) => {
-  const { user_id, message } = req.body;
-  const io = req.app.get("io"); // ⬅️ отримуємо доступ до io
+  const { message } = req.body;
+  const user_id = req.user?.id;
+  const io = req.app.get("io");
+
   console.log("📥 [POST] Створення сповіщення:", { user_id, message });
 
   if (!user_id || !message) {
@@ -17,8 +19,6 @@ const createNotification = async (req, res) => {
     );
 
     const notification = result.rows[0];
-
-    // 🔔 Надіслати сповіщення через WebSocket на канал user_id
     io.emit(`notification_${user_id}`, notification);
 
     res.status(201).json(notification);
@@ -30,19 +30,18 @@ const createNotification = async (req, res) => {
 
 // 📥 Отримати всі сповіщення користувача
 const getUserNotifications = async (req, res) => {
-  const { userId } = req.params;
-  const parsedId = parseInt(userId, 10);
+  const userId = req.user?.id;
 
-  console.log("[GET] userId from params:", userId);
+  console.log("[GET] Сповіщення для користувача:", userId);
 
-  if (isNaN(parsedId)) {
-    return res.status(400).json({ message: "Некоректний userId." });
+  if (!userId) {
+    return res.status(401).json({ message: "Не авторизований користувач." });
   }
 
   try {
     const result = await pool.query(
       `SELECT * FROM notifications WHERE user_id = $1 ORDER BY created_at DESC`,
-      [parsedId]
+      [userId]
     );
     res.status(200).json(result.rows);
   } catch (error) {
@@ -126,15 +125,14 @@ const addCommentToNotification = async (req, res) => {
 
 // 🗑 Видалити всі сповіщення користувача
 const deleteAllNotifications = async (req, res) => {
-  const { userId } = req.params;
-  const parsedId = parseInt(userId, 10);
+  const userId = req.user?.id;
 
-  if (!parsedId || isNaN(parsedId)) {
-    return res.status(400).json({ message: "Некоректний userId." });
+  if (!userId) {
+    return res.status(401).json({ message: "Не авторизований користувач." });
   }
 
   try {
-    await pool.query(`DELETE FROM notifications WHERE user_id = $1`, [parsedId]);
+    await pool.query(`DELETE FROM notifications WHERE user_id = $1`, [userId]);
     res.json({ success: true });
   } catch (error) {
     console.error("❌ [deleteAllNotifications] Помилка:", error);
