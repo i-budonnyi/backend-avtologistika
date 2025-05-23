@@ -9,24 +9,24 @@ const {
   deleteAllNotifications,
 } = require("../controllers/notificationController");
 
-const authenticateUser = require("../middleware/authenticateToken"); // ⚠️ переконайся, що цей файл існує
+const verifyAccessToken = require("../middleware/verifyAccessToken"); // ✅ новий middleware
 
 // ➕ Створити сповіщення
-router.post("/", authenticateUser, addNotification);
+router.post("/", verifyAccessToken, addNotification);
 
 // 📥 Отримати всі сповіщення користувача
-router.get("/me", authenticateUser, getUserNotifications);
+router.get("/me", verifyAccessToken, getUserNotifications);
 
 // ✅ Оновити статус
-router.patch("/:id/status", authenticateUser, updateNotificationStatus);
+router.patch("/:id/status", verifyAccessToken, updateNotificationStatus);
 
 // 🔔 Позначити як прочитане
-router.patch("/:id/read", authenticateUser, markAsRead);
+router.patch("/:id/read", verifyAccessToken, markAsRead);
 
 // 💬 Додати коментар
-router.patch("/:id/comment", authenticateUser, addCommentToNotification);
+router.patch("/:id/comment", verifyAccessToken, addCommentToNotification);
 
 // 🗑 Видалити всі сповіщення
-router.delete("/me", authenticateUser, deleteAllNotifications);
+router.delete("/me", verifyAccessToken, deleteAllNotifications);
 
 module.exports = router;

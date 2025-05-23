@@ -4,7 +4,6 @@ const pool = require("../config/db");
 const createNotification = async (req, res) => {
   const io = req.app.get("io");
 
-  // Підтримка авторизованого користувача або явного user_id з тіла запиту
   const user_id = req.user?.id || req.body.user_id;
   const message = req.body.message;
 
