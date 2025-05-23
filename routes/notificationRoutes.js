@@ -1,24 +1,24 @@
 ﻿const express = require("express");
 const router = express.Router();
 const notificationController = require("../controllers/notificationController");
-const authenticateUser = require("../middleware/authenticateToken");
+const authenticateUser = require("../middleware/authenticateToken"); // 🔹 Імпорт названо authenticateUser
 
 // ➕ Створити сповіщення
-router.post("/", authenticateToken, notificationController.addNotification);
+router.post("/", authenticateUser, notificationController.addNotification);
 
 // 📥 Отримати всі сповіщення користувача
-router.get("/me", authenticateToken, notificationController.getUserNotifications);
+router.get("/me", authenticateUser, notificationController.getUserNotifications);
 
 // ✅ Оновити статус
-router.patch("/:id/status", authenticateToken, notificationController.updateNotificationStatus);
+router.patch("/:id/status", authenticateUser, notificationController.updateNotificationStatus);
 
 // 🔔 Позначити як прочитане
-router.patch("/:id/read", authenticateToken, notificationController.markAsRead);
+router.patch("/:id/read", authenticateUser, notificationController.markAsRead);
 
 // 💬 Додати коментар
-router.patch("/:id/comment", authenticateToken, notificationController.addCommentToNotification);
+router.patch("/:id/comment", authenticateUser, notificationController.addCommentToNotification);
 
 // 🗑 Видалити всі сповіщення
-router.delete("/me", authenticateToken, notificationController.deleteAllNotifications);
+router.delete("/me", authenticateUser, notificationController.deleteAllNotifications);
 
 module.exports = router;
