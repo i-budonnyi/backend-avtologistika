@@ -9,24 +9,24 @@ const {
   deleteAllNotifications,
 } = require("../controllers/notificationController");
 
-const verifyAccessToken = require("../middleware/verifyAccessToken"); // ✅ новий middleware
+const verifyAccessToken = require("../middleware/verifyAccessToken"); // 🔐 Перевірка JWT токена
 
-// ➕ Створити сповіщення
+// 🔔 Створити нове сповіщення (наприклад, коли подано ідею)
 router.post("/", verifyAccessToken, addNotification);
 
-// 📥 Отримати всі сповіщення користувача
+// 📩 Отримати всі сповіщення для поточного користувача
 router.get("/me", verifyAccessToken, getUserNotifications);
 
-// ✅ Оновити статус
+// 🔄 Оновити статус сповіщення (наприклад, переглянуто/нове)
 router.patch("/:id/status", verifyAccessToken, updateNotificationStatus);
 
-// 🔔 Позначити як прочитане
+// ✅ Позначити сповіщення як прочитане
 router.patch("/:id/read", verifyAccessToken, markAsRead);
 
-// 💬 Додати коментар
+// 💬 Додати коментар до сповіщення (наприклад, реакція користувача)
 router.patch("/:id/comment", verifyAccessToken, addCommentToNotification);
 
-// 🗑 Видалити всі сповіщення
+// 🗑 Видалити всі сповіщення користувача
 router.delete("/me", verifyAccessToken, deleteAllNotifications);
 
 module.exports = router;
