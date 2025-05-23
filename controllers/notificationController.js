@@ -73,7 +73,7 @@ const updateNotificationStatus = async (req, res) => {
     res.status(200).json({ message: "Статус оновлено", data: result.rows[0] });
   } catch (error) {
     console.error("❌ [updateNotificationStatus] Помилка:", error);
-    res.status(500).json({ message: "Помилка при оновленні статусу.", error: error.message });
+    res.status(500).json({ message: "Помила при оновленні статусу.", error: error.message });
   }
 };
 
