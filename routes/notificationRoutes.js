@@ -1,24 +1,32 @@
 ﻿const express = require("express");
 const router = express.Router();
-const notificationController = require("../controllers/notificationController");
-const authenticateUser = require("../middleware/authenticateToken"); // 🔹 Імпорт названо authenticateUser
+const {
+  addNotification,
+  getUserNotifications,
+  updateNotificationStatus,
+  markAsRead,
+  addCommentToNotification,
+  deleteAllNotifications,
+} = require("../controllers/notificationController");
+
+const authenticateUser = require("../middleware/authenticateToken"); // або authenticateToken — головне, щоб збігалося з використанням
 
 // ➕ Створити сповіщення
-router.post("/", authenticateUser, notificationController.addNotification);
+router.post("/", authenticateUser, addNotification);
 
 // 📥 Отримати всі сповіщення користувача
-router.get("/me", authenticateUser, notificationController.getUserNotifications);
+router.get("/me", authenticateUser, getUserNotifications);
 
 // ✅ Оновити статус
-router.patch("/:id/status", authenticateUser, notificationController.updateNotificationStatus);
+router.patch("/:id/status", authenticateUser, updateNotificationStatus);
 
 // 🔔 Позначити як прочитане
-router.patch("/:id/read", authenticateUser, notificationController.markAsRead);
+router.patch("/:id/read", authenticateUser, markAsRead);
 
 // 💬 Додати коментар
-router.patch("/:id/comment", authenticateUser, notificationController.addCommentToNotification);
+router.patch("/:id/comment", authenticateUser, addCommentToNotification);
 
 // 🗑 Видалити всі сповіщення
-router.delete("/me", authenticateUser, notificationController.deleteAllNotifications);
+router.delete("/me", authenticateUser, deleteAllNotifications);
 
 module.exports = router;
