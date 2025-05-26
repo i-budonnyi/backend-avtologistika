@@ -23,40 +23,87 @@ const extractUserId = (req) => {
 // 🔔 Створити сповіщення
 const createNotification = async (req, res) => {
   const io = req.app.get("io");
-  const user_id = extractUserId(req);
-  const { message } = req.body;
+  const { message, target = "user", user_id, idea_id, problem_id } = req.body;
 
-  console.log("📥 [POST /notification] Створення:", {
-    headers: req.headers,
-    body: req.body,
-    userFromToken: req.user,
-    resolvedUserId: user_id,
+  console.log("📥 [POST /notification] Запит на створення:", {
+    target,
+    message,
+    user_id,
+    idea_id,
+    problem_id,
   });
 
-  if (!user_id || !message) {
+  if (!message) {
     return res.status(400).json({
-      message: "❗ Потрібен user_id та message.",
-      debug: { user_id, message, user: req.user },
-      fix: "Передай user_id через JWT, body, query або params.",
+      message: "Повідомлення обов’язкове.",
+      fix: "Додай { message: '...', target: 'user|all|subscribers' }",
     });
   }
 
   try {
-    const result = await pool.query(
-      `INSERT INTO notifications (user_id, message) VALUES ($1, $2) RETURNING *`,
-      [user_id, message]
-    );
+    if (target === "all") {
+      // 🔔 Створити глобальне сповіщення
+      const result = await pool.query(
+        `INSERT INTO notifications (user_id, message) VALUES (NULL, $1) RETURNING *`,
+        [message]
+      );
+      io.emit("notification_all", result.rows[0]);
+      return res.status(201).json(result.rows[0]);
+    }
 
-    const notification = result.rows[0];
-    io.emit(`notification_${user_id}`, notification);
-    io.emit("notification_all", notification);
+    if (target === "user" && user_id) {
+      const result = await pool.query(
+        `INSERT INTO notifications (user_id, message) VALUES ($1, $2) RETURNING *`,
+        [user_id, message]
+      );
+      io.emit(`notification_${user_id}`, result.rows[0]);
+      return res.status(201).json(result.rows[0]);
+    }
 
-    return res.status(201).json(notification);
+    if (target === "subscribers") {
+      let subscribersQuery = "";
+      let id = null;
+
+      if (idea_id) {
+        id = idea_id;
+        subscribersQuery = `SELECT user_id FROM idea_subscriptions WHERE idea_id = $1`;
+      } else if (problem_id) {
+        id = problem_id;
+        subscribersQuery = `SELECT user_id FROM problem_subscriptions WHERE problem_id = $1`;
+      }
+
+      if (!subscribersQuery || !id) {
+        return res.status(400).json({
+          message: "Не вказано idea_id або problem_id.",
+          fix: "Надішли { target: 'subscribers', idea_id: 123 } або problem_id.",
+        });
+      }
+
+      const subRes = await pool.query(subscribersQuery, [id]);
+      const subscribers = subRes.rows.map(r => r.user_id);
+
+      const notifications = [];
+
+      for (const uid of subscribers) {
+        const result = await pool.query(
+          `INSERT INTO notifications (user_id, message) VALUES ($1, $2) RETURNING *`,
+          [uid, message]
+        );
+        const notification = result.rows[0];
+        notifications.push(notification);
+        io.emit(`notification_${uid}`, notification);
+      }
+
+      return res.status(201).json({ message: "Надіслано підписникам", notifications });
+    }
+
+    return res.status(400).json({ message: "Невірний тип сповіщення або user_id відсутній" });
   } catch (error) {
     console.error("❌ [CREATE] SQL-помилка:", error);
     return res.status(500).json({ message: "Помилка при створенні", error: error.message });
   }
 };
+
 
 // 📩 Отримати всі сповіщення користувача
 const getUserNotifications = async (req, res) => {
