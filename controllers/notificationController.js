@@ -2,18 +2,18 @@ const pool = require("../config/db");
 
 // 🔐 Отримати user_id з JWT або body
 const extractUserId = (req) => {
-  if (req.user?.id) return req.user.id;
-  if (req.body?.user_id) return req.body.user_id;
-  return null;
+  const id = req.user?.id || req.body?.user_id;
+  console.log("🔍 [extractUserId] Отримано ID:", id, "| JWT payload:", req.user, "| body:", req.body);
+  return id || null;
 };
 
-// ➕ Створення сповіщення
+// 🔔 Створити сповіщення
 const createNotification = async (req, res) => {
   const io = req.app.get("io");
   const user_id = extractUserId(req);
   const { message } = req.body;
 
-  console.log("🔔 [CREATE] Запит на створення сповіщення:", {
+  console.log("📥 [POST /notification] Запит на створення:", {
     headers: req.headers,
     body: req.body,
     userFromToken: req.user,
@@ -21,11 +21,10 @@ const createNotification = async (req, res) => {
   });
 
   if (!user_id || !message) {
-    const msg = "Потрібен user_id та message.";
-    console.warn("⚠️", msg);
     return res.status(400).json({
-      message: msg,
+      message: "❗ Потрібен user_id та message.",
       debug: { user_id, message, user: req.user },
+      fix: "Перевір токен і тіло запиту. JWT повинен містити user.id або передай user_id у body.",
     });
   }
 
@@ -34,9 +33,7 @@ const createNotification = async (req, res) => {
       `INSERT INTO notifications (user_id, message) VALUES ($1, $2) RETURNING *`,
       [user_id, message]
     );
-
     const notification = result.rows[0];
-    console.log("✅ [CREATE] Створено сповіщення:", notification);
 
     io.emit(`notification_${user_id}`, notification);
     io.emit("notification_all", notification);
@@ -51,22 +48,21 @@ const createNotification = async (req, res) => {
   }
 };
 
-// 📥 Отримати сповіщення авторизованого користувача
+// 📩 Отримати всі сповіщення авторизованого користувача
 const getUserNotifications = async (req, res) => {
   const userId = extractUserId(req);
 
-  console.log("📥 [ME] Отримання сповіщень:", {
+  console.log("📥 [GET /notification/me] Запит:", {
     headers: req.headers,
     userFromToken: req.user,
     resolvedUserId: userId,
   });
 
   if (!userId) {
-    const msg = "Користувач не авторизований.";
-    console.warn("⛔", msg);
     return res.status(401).json({
-      message: msg,
+      message: "Користувач не авторизований.",
       debug: { user: req.user },
+      fix: "Перевір middleware verifyAccessToken: токен має бути чинний, payload має містити id.",
     });
   }
 
@@ -75,10 +71,9 @@ const getUserNotifications = async (req, res) => {
       `SELECT * FROM notifications WHERE user_id = $1 ORDER BY created_at DESC`,
       [userId]
     );
-    console.log("✅ [ME] Знайдено сповіщень:", result.rows.length);
     return res.status(200).json(result.rows);
   } catch (error) {
-    console.error("❌ [ME] SQL-помилка:", error);
+    console.error("❌ [GET /notification/me] SQL-помилка:", error);
     return res.status(500).json({
       message: "Помилка при отриманні сповіщень.",
       error: error.message,
@@ -86,13 +81,18 @@ const getUserNotifications = async (req, res) => {
   }
 };
 
-// 📥 Отримати сповіщення іншого користувача (для адміна)
+// 📥 Отримати сповіщення по user_id (для адміністратора)
 const getNotificationsByUserId = async (req, res) => {
   const { id } = req.params;
 
-  console.log("📥 [ADMIN] Запит сповіщень для user_id:", id);
+  console.log("📥 [GET /notification/user/:id] Запит:", { id });
 
-  if (!id) return res.status(400).json({ message: "Не передано user_id." });
+  if (!id) {
+    return res.status(400).json({
+      message: "user_id в параметрах відсутній.",
+      fix: "Перевір frontend-запит: має бути шлях типу /notification/user/123",
+    });
+  }
 
   try {
     const result = await pool.query(
@@ -114,10 +114,13 @@ const updateNotificationStatus = async (req, res) => {
   const { id } = req.params;
   const { status } = req.body;
 
-  console.log("🔄 [STATUS] Оновлення статусу:", { id, status });
+  console.log("🔄 [PATCH /notification/:id/status] Запит:", { id, status });
 
   if (!status) {
-    return res.status(400).json({ message: "Статус обов’язковий." });
+    return res.status(400).json({
+      message: "Статус є обов’язковим.",
+      fix: "Додай статус у body, напр. { status: 'approved' }",
+    });
   }
 
   try {
@@ -130,10 +133,7 @@ const updateNotificationStatus = async (req, res) => {
       return res.status(404).json({ message: "Сповіщення не знайдено." });
     }
 
-    return res.status(200).json({
-      message: "Статус оновлено",
-      data: result.rows[0],
-    });
+    return res.status(200).json({ message: "Статус оновлено", data: result.rows[0] });
   } catch (error) {
     console.error("❌ [STATUS] SQL-помилка:", error);
     return res.status(500).json({ message: "Помилка при оновленні статусу", error: error.message });
@@ -143,7 +143,7 @@ const updateNotificationStatus = async (req, res) => {
 // ✅ Позначити як прочитане
 const markAsRead = async (req, res) => {
   const { id } = req.params;
-  console.log("📘 [READ] Позначити як прочитане:", id);
+  console.log("📘 [PATCH /notification/:id/read] Запит:", { id });
 
   try {
     const result = await pool.query(
@@ -167,10 +167,13 @@ const addCommentToNotification = async (req, res) => {
   const { id } = req.params;
   const { comment } = req.body;
 
-  console.log("💬 [COMMENT] Додавання коментаря:", { id, comment });
+  console.log("💬 [PATCH /notification/:id/comment] Запит:", { id, comment });
 
   if (!comment) {
-    return res.status(400).json({ message: "Коментар обов’язковий." });
+    return res.status(400).json({
+      message: "Коментар обов’язковий.",
+      fix: "Додай у body { comment: '...' }",
+    });
   }
 
   try {
@@ -190,11 +193,11 @@ const addCommentToNotification = async (req, res) => {
   }
 };
 
-// 🗑 Видалити всі сповіщення для поточного користувача
+// 🗑 Видалити всі сповіщення поточного користувача
 const deleteAllNotifications = async (req, res) => {
   const userId = extractUserId(req);
 
-  console.log("🗑 [DELETE] Видалення сповіщень:", {
+  console.log("🗑 [DELETE /notification/me] Запит:", {
     headers: req.headers,
     resolvedUserId: userId,
     userFromToken: req.user,
@@ -204,6 +207,7 @@ const deleteAllNotifications = async (req, res) => {
     return res.status(401).json({
       message: "Не авторизований.",
       debug: { user: req.user },
+      fix: "JWT не містить id. Перевір verifyAccessToken.",
     });
   }
 
