@@ -3,7 +3,7 @@
 const JWT_SECRET = process.env.JWT_SECRET || "your_secret_key";
 
 const verifyAccessToken = (req, res, next) => {
-  const authHeader = req.headers["authorization"];
+  const authHeader = req.headers["authorization"] || req.headers.authorization;
   console.log("🧪 [verifyAccessToken] Authorization header:", authHeader);
 
   if (!authHeader || !authHeader.startsWith("Bearer ")) {
@@ -15,12 +15,12 @@ const verifyAccessToken = (req, res, next) => {
 
   try {
     const decoded = jwt.verify(token, JWT_SECRET);
-    req.user = decoded; // прикріплюємо payload до запиту
-    console.log("✅ Токен валідний. Декодований користувач:", decoded);
+    req.user = decoded;
+    console.log("✅ [verifyAccessToken] Токен валідний. Декодований користувач:", decoded);
     next();
   } catch (error) {
-    console.error("❌ Помилка перевірки токена:", error.message);
-    return res.status(403).json({ message: "Недійсний або прострочений токен." });
+    console.error("❌ [verifyAccessToken] Помилка перевірки токена:", error.message);
+    return res.status(403).json({ message: "Недійсний або прострочений токен.", error: error.message });
   }
 };
 

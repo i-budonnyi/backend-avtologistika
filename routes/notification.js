@@ -11,7 +11,12 @@ const {
   deleteAllNotifications,
 } = require("../controllers/notificationController");
 
+const { getUserProfile, logout } = require("../controllers/userController"); // ✅ Підключено з іншого маршруту
 const verifyAccessToken = require("../middleware/verifyAccessToken");
+
+// ✅ Додаткові маршрути профілю, якщо потрібно
+router.get("/user/profile", verifyAccessToken, getUserProfile);
+router.post("/user/logout", verifyAccessToken, logout);
 
 // 🔔 Створити нове сповіщення
 router.post("/", verifyAccessToken, addNotification);
