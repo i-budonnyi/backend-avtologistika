@@ -107,7 +107,7 @@ const createNotification = async (req, res) => {
 
 // 📩 Отримати всі сповіщення користувача
 const getUserNotifications = async (req, res) => {
-  const userId = extractUserId(req);
+  const userId = req.user?.id;
 
   console.log("📥 [GET /notification/me] Запит:", {
     headers: req.headers,
@@ -119,7 +119,7 @@ const getUserNotifications = async (req, res) => {
     return res.status(401).json({
       message: "Користувач не авторизований.",
       debug: { user: req.user },
-      fix: "JWT має містити id або надішли user_id в query/body.",
+      fix: "JWT має містит id.",
     });
   }
 
