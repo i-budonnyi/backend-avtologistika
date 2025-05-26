@@ -3,22 +3,22 @@ const router = express.Router();
 const {
   addNotification,
   getUserNotifications,
-  getNotificationsByUserId, // ✅ Додано
+  getNotificationsByUserId,
   updateNotificationStatus,
   markAsRead,
   addCommentToNotification,
   deleteAllNotifications,
 } = require("../controllers/notificationController");
 
-const verifyAccessToken = require("../middleware/verifyAccessToken"); // 🔐 Перевірка JWT токена
+const verifyAccessToken = require("../middleware/verifyAccessToken");
 
 // 🔔 Створити нове сповіщення
 router.post("/", verifyAccessToken, addNotification);
 
-// 📩 Отримати всі сповіщення поточного користувача
+// 📩 Отримати сповіщення авторизованого користувача
 router.get("/me", verifyAccessToken, getUserNotifications);
 
-// 📥 Отримати сповіщення по userId (для фронту)
+// 📥 Отримати сповіщення за userId (доступне тільки для адміністрації або з правами)
 router.get("/user/:id", verifyAccessToken, getNotificationsByUserId);
 
 // 🔄 Оновити статус
@@ -30,7 +30,7 @@ router.patch("/:id/read", verifyAccessToken, markAsRead);
 // 💬 Додати коментар
 router.patch("/:id/comment", verifyAccessToken, addCommentToNotification);
 
-// 🗑 Видалити всі
+// 🗑 Видалити всі сповіщення авторизованого користувача
 router.delete("/me", verifyAccessToken, deleteAllNotifications);
 
 module.exports = router;
