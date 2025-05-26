@@ -1,10 +1,23 @@
 const pool = require("../config/db");
 
-// 🔐 Отримати user_id з JWT або body
+// 🔐 Отримати user_id з JWT, body, query або params
 const extractUserId = (req) => {
-  const id = req.user?.id || req.body?.user_id;
-  console.log("🔍 [extractUserId] Отримано ID:", id, "| JWT payload:", req.user, "| body:", req.body);
-  return id || null;
+  const fromToken = req.user?.id;
+  const fromBody = req.body?.user_id;
+  const fromQuery = req.query?.user_id;
+  const fromParams = req.params?.id;
+
+  const resolved = fromToken || fromBody || fromQuery || fromParams || null;
+
+  console.log("🔍 [extractUserId] Вилучення user_id:", {
+    fromToken,
+    fromBody,
+    fromQuery,
+    fromParams,
+    resolved,
+  });
+
+  return resolved;
 };
 
 // 🔔 Створити сповіщення
@@ -13,7 +26,7 @@ const createNotification = async (req, res) => {
   const user_id = extractUserId(req);
   const { message } = req.body;
 
-  console.log("📥 [POST /notification] Запит на створення:", {
+  console.log("📥 [POST /notification] Створення:", {
     headers: req.headers,
     body: req.body,
     userFromToken: req.user,
@@ -24,7 +37,7 @@ const createNotification = async (req, res) => {
     return res.status(400).json({
       message: "❗ Потрібен user_id та message.",
       debug: { user_id, message, user: req.user },
-      fix: "Перевір токен і тіло запиту. JWT повинен містити user.id або передай user_id у body.",
+      fix: "Передай user_id через JWT, body, query або params.",
     });
   }
 
@@ -33,22 +46,19 @@ const createNotification = async (req, res) => {
       `INSERT INTO notifications (user_id, message) VALUES ($1, $2) RETURNING *`,
       [user_id, message]
     );
-    const notification = result.rows[0];
 
+    const notification = result.rows[0];
     io.emit(`notification_${user_id}`, notification);
     io.emit("notification_all", notification);
 
     return res.status(201).json(notification);
   } catch (error) {
     console.error("❌ [CREATE] SQL-помилка:", error);
-    return res.status(500).json({
-      message: "Помилка при створенні сповіщення.",
-      error: error.message,
-    });
+    return res.status(500).json({ message: "Помилка при створенні", error: error.message });
   }
 };
 
-// 📩 Отримати всі сповіщення авторизованого користувача
+// 📩 Отримати всі сповіщення користувача
 const getUserNotifications = async (req, res) => {
   const userId = extractUserId(req);
 
@@ -62,7 +72,7 @@ const getUserNotifications = async (req, res) => {
     return res.status(401).json({
       message: "Користувач не авторизований.",
       debug: { user: req.user },
-      fix: "Перевір middleware verifyAccessToken: токен має бути чинний, payload має містити id.",
+      fix: "JWT має містити id або надішли user_id в query/body.",
     });
   }
 
@@ -74,14 +84,11 @@ const getUserNotifications = async (req, res) => {
     return res.status(200).json(result.rows);
   } catch (error) {
     console.error("❌ [GET /notification/me] SQL-помилка:", error);
-    return res.status(500).json({
-      message: "Помилка при отриманні сповіщень.",
-      error: error.message,
-    });
+    return res.status(500).json({ message: "Помилка при запиті", error: error.message });
   }
 };
 
-// 📥 Отримати сповіщення по user_id (для адміністратора)
+// 📥 Отримати сповіщення по user_id (адміністратор)
 const getNotificationsByUserId = async (req, res) => {
   const { id } = req.params;
 
@@ -90,7 +97,7 @@ const getNotificationsByUserId = async (req, res) => {
   if (!id) {
     return res.status(400).json({
       message: "user_id в параметрах відсутній.",
-      fix: "Перевір frontend-запит: має бути шлях типу /notification/user/123",
+      fix: "Перевір URL: /notification/user/:id",
     });
   }
 
@@ -102,14 +109,11 @@ const getNotificationsByUserId = async (req, res) => {
     return res.status(200).json(result.rows);
   } catch (error) {
     console.error("❌ [ADMIN] SQL-помилка:", error);
-    return res.status(500).json({
-      message: "Помилка при запиті сповіщень.",
-      error: error.message,
-    });
+    return res.status(500).json({ message: "Помилка при запиті", error: error.message });
   }
 };
 
-// 🔄 Оновити статус
+// 🔄 Оновити статус сповіщення
 const updateNotificationStatus = async (req, res) => {
   const { id } = req.params;
   const { status } = req.body;
@@ -118,8 +122,8 @@ const updateNotificationStatus = async (req, res) => {
 
   if (!status) {
     return res.status(400).json({
-      message: "Статус є обов’язковим.",
-      fix: "Додай статус у body, напр. { status: 'approved' }",
+      message: "Статус обов’язковий.",
+      fix: "Надішли status у body (напр. { status: 'approved' })",
     });
   }
 
@@ -136,13 +140,14 @@ const updateNotificationStatus = async (req, res) => {
     return res.status(200).json({ message: "Статус оновлено", data: result.rows[0] });
   } catch (error) {
     console.error("❌ [STATUS] SQL-помилка:", error);
-    return res.status(500).json({ message: "Помилка при оновленні статусу", error: error.message });
+    return res.status(500).json({ message: "Помилка при оновленні", error: error.message });
   }
 };
 
 // ✅ Позначити як прочитане
 const markAsRead = async (req, res) => {
   const { id } = req.params;
+
   console.log("📘 [PATCH /notification/:id/read] Запит:", { id });
 
   try {
@@ -158,11 +163,11 @@ const markAsRead = async (req, res) => {
     return res.status(200).json({ success: true });
   } catch (error) {
     console.error("❌ [READ] SQL-помилка:", error);
-    return res.status(500).json({ message: "Помилка при оновленні статусу прочитаності", error: error.message });
+    return res.status(500).json({ message: "Помилка при оновленні", error: error.message });
   }
 };
 
-// 💬 Додати коментар
+// 💬 Додати коментар до сповіщення
 const addCommentToNotification = async (req, res) => {
   const { id } = req.params;
   const { comment } = req.body;
@@ -172,7 +177,7 @@ const addCommentToNotification = async (req, res) => {
   if (!comment) {
     return res.status(400).json({
       message: "Коментар обов’язковий.",
-      fix: "Додай у body { comment: '...' }",
+      fix: "Додай у body: { comment: '...' }",
     });
   }
 
@@ -189,11 +194,11 @@ const addCommentToNotification = async (req, res) => {
     return res.status(200).json({ message: "Коментар додано", data: result.rows[0] });
   } catch (error) {
     console.error("❌ [COMMENT] SQL-помилка:", error);
-    return res.status(500).json({ message: "Помилка при додаванні коментаря", error: error.message });
+    return res.status(500).json({ message: "Помилка при оновленні", error: error.message });
   }
 };
 
-// 🗑 Видалити всі сповіщення поточного користувача
+// 🗑 Видалити всі сповіщення користувача
 const deleteAllNotifications = async (req, res) => {
   const userId = extractUserId(req);
 
@@ -207,13 +212,13 @@ const deleteAllNotifications = async (req, res) => {
     return res.status(401).json({
       message: "Не авторизований.",
       debug: { user: req.user },
-      fix: "JWT не містить id. Перевір verifyAccessToken.",
+      fix: "JWT має містити user_id або передай явно.",
     });
   }
 
   try {
     await pool.query(`DELETE FROM notifications WHERE user_id = $1`, [userId]);
-    return res.json({ success: true });
+    return res.status(200).json({ success: true });
   } catch (error) {
     console.error("❌ [DELETE] SQL-помилка:", error);
     return res.status(500).json({ message: "Помилка при видаленні", error: error.message });
