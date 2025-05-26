@@ -53,9 +53,9 @@ const getNotificationsByUserId = async (req, res) => {
   }
 };
 
-// 📥 Отримати сповіщення для авторизованого користувача (/me)
+// 📥 Отримати сповіщення для авторизованого користувача (/notification/me)
 const getUserNotifications = async (req, res) => {
-  const userId = extractUserId(req);
+  const userId = req.user?.id;
 
   if (!userId) {
     return res.status(401).json({ message: "Не авторизований." });
@@ -64,14 +64,18 @@ const getUserNotifications = async (req, res) => {
   try {
     const result = await pool.query(
       `SELECT * FROM notifications WHERE user_id = $1 ORDER BY created_at DESC`,
-      [userId]
+      [userId] // ✅ Ось тут важливо — масив з одним параметром
     );
     return res.status(200).json(result.rows);
   } catch (error) {
     console.error("❌ SQL-помилка (getUserNotifications):", error);
-    return res.status(500).json({ message: "Помилка при отриманні сповіщень.", error: error.message });
+    return res.status(500).json({
+      message: "Помилка при отриманні сповіщень.",
+      error: error.message,
+    });
   }
 };
+
 
 // 🔄 Оновити статус (довільний статус)
 const updateNotificationStatus = async (req, res) => {
