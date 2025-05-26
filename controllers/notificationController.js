@@ -55,17 +55,21 @@ const getNotificationsByUserId = async (req, res) => {
 
 // 📥 Отримати сповіщення для авторизованого користувача (/notification/me)
 const getUserNotifications = async (req, res) => {
-  const userId = req.user?.id;
+  const userId = extractUserId(req);
+
+  console.log("🔎 [getUserNotifications] userId:", userId);
 
   if (!userId) {
+    console.warn("⛔ [getUserNotifications] Користувач не авторизований.");
     return res.status(401).json({ message: "Не авторизований." });
   }
 
   try {
     const result = await pool.query(
       `SELECT * FROM notifications WHERE user_id = $1 ORDER BY created_at DESC`,
-      [userId] // ✅ Ось тут важливо — масив з одним параметром
+      [userId]
     );
+    console.log("✅ [getUserNotifications] Сповіщення знайдено:", result.rows.length);
     return res.status(200).json(result.rows);
   } catch (error) {
     console.error("❌ SQL-помилка (getUserNotifications):", error);
