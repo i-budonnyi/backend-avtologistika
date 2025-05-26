@@ -42,7 +42,6 @@ const createNotification = async (req, res) => {
 
   try {
     if (target === "all") {
-      // 🔔 Створити глобальне сповіщення
       const result = await pool.query(
         `INSERT INTO notifications (user_id, message) VALUES (NULL, $1) RETURNING *`,
         [message]
