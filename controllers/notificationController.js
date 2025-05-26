@@ -23,79 +23,100 @@ const createNotification = async (req, res) => {
       [user_id, message]
     );
     const notification = result.rows[0];
+
+    // 🔔 WebSocket
     io.emit(`notification_${user_id}`, notification);
     io.emit("notification_all", notification);
-    res.status(201).json(notification);
+
+    return res.status(201).json(notification);
   } catch (error) {
-    console.error("❌ SQL помилка:", error);
-    res.status(500).json({ message: "Помилка при створенні сповіщення.", error: error.message });
+    console.error("❌ SQL-помилка (createNotification):", error);
+    return res.status(500).json({ message: "Помилка при створенні сповіщення.", error: error.message });
   }
 };
 
-// 📥 Сповіщення по userId (для фронту)
+// 📥 Отримати сповіщення по конкретному userId (для адміністратора)
 const getNotificationsByUserId = async (req, res) => {
   const { id } = req.params;
+
+  if (!id) return res.status(400).json({ message: "Не передано user_id в параметрах." });
+
   try {
     const result = await pool.query(
       `SELECT * FROM notifications WHERE user_id = $1 ORDER BY created_at DESC`,
       [id]
     );
-    res.status(200).json(result.rows);
+    return res.status(200).json(result.rows);
   } catch (error) {
-    console.error("❌ SQL помилка:", error);
-    res.status(500).json({ message: "Помилка при запиті сповіщень за user_id", error: error.message });
+    console.error("❌ SQL-помилка (getNotificationsByUserId):", error);
+    return res.status(500).json({ message: "Помилка при запиті сповіщень за user_id", error: error.message });
   }
 };
 
-// 📥 Сповіщення для авторизованого користувача (/me)
+// 📥 Отримати сповіщення для авторизованого користувача (/me)
 const getUserNotifications = async (req, res) => {
-  const userId = req.user?.id;
-  if (!userId) return res.status(401).json({ message: "Не авторизований." });
+  const userId = extractUserId(req);
+
+  if (!userId) {
+    return res.status(401).json({ message: "Не авторизований." });
+  }
 
   try {
     const result = await pool.query(
       `SELECT * FROM notifications WHERE user_id = $1 ORDER BY created_at DESC`,
       [userId]
     );
-    res.status(200).json(result.rows);
+    return res.status(200).json(result.rows);
   } catch (error) {
-    console.error("❌ SQL-помилка:", error);
-    res.status(500).json({ message: "Помилка при отриманні сповіщень.", error: error.message });
+    console.error("❌ SQL-помилка (getUserNotifications):", error);
+    return res.status(500).json({ message: "Помилка при отриманні сповіщень.", error: error.message });
   }
 };
 
-// 🔄 Оновлення статусу
+// 🔄 Оновити статус (довільний статус)
 const updateNotificationStatus = async (req, res) => {
   const { id } = req.params;
   const { status } = req.body;
-  if (!status) return res.status(400).json({ message: "Статус обов’язковий." });
+
+  if (!status) {
+    return res.status(400).json({ message: "Статус обов’язковий." });
+  }
 
   try {
     const result = await pool.query(
       `UPDATE notifications SET status = $1 WHERE id = $2 RETURNING *`,
       [status, id]
     );
-    if (!result.rowCount) return res.status(404).json({ message: "Сповіщення не знайдено." });
-    res.status(200).json({ message: "Статус оновлено", data: result.rows[0] });
+
+    if (!result.rowCount) {
+      return res.status(404).json({ message: "Сповіщення не знайдено." });
+    }
+
+    return res.status(200).json({ message: "Статус оновлено", data: result.rows[0] });
   } catch (error) {
-    console.error("❌ SQL-помилка:", error);
-    res.status(500).json({ message: "Помилка при оновленні статусу", error: error.message });
+    console.error("❌ SQL-помилка (updateNotificationStatus):", error);
+    return res.status(500).json({ message: "Помилка при оновленні статусу", error: error.message });
   }
 };
 
 // ✅ Позначити як прочитане
 const markAsRead = async (req, res) => {
   const { id } = req.params;
+
   try {
     const result = await pool.query(
       `UPDATE notifications SET is_read = true WHERE id = $1 RETURNING *`,
       [id]
     );
-    if (!result.rowCount) return res.status(404).json({ message: "Не знайдено." });
-    res.json({ success: true });
+
+    if (!result.rowCount) {
+      return res.status(404).json({ message: "Сповіщення не знайдено." });
+    }
+
+    return res.status(200).json({ success: true });
   } catch (error) {
-    console.error("❌ SQL-помилка:", error);
-    res.status(500).json({ message: "Помилка при оновленні статусу прочитаності", error: error.message });
+    console.error("❌ SQL-помилка (markAsRead):", error);
+    return res.status(500).json({ message: "Помилка при оновленні статусу прочитаності", error: error.message });
   }
 };
 
@@ -103,32 +124,42 @@ const markAsRead = async (req, res) => {
 const addCommentToNotification = async (req, res) => {
   const { id } = req.params;
   const { comment } = req.body;
-  if (!comment) return res.status(400).json({ message: "Коментар обов’язковий." });
+
+  if (!comment) {
+    return res.status(400).json({ message: "Коментар обов’язковий." });
+  }
 
   try {
     const result = await pool.query(
       `UPDATE notifications SET comment = $1 WHERE id = $2 RETURNING *`,
       [comment, id]
     );
-    if (!result.rowCount) return res.status(404).json({ message: "Не знайдено." });
-    res.status(200).json({ message: "Коментар додано", data: result.rows[0] });
+
+    if (!result.rowCount) {
+      return res.status(404).json({ message: "Сповіщення не знайдено." });
+    }
+
+    return res.status(200).json({ message: "Коментар додано", data: result.rows[0] });
   } catch (error) {
-    console.error("❌ SQL-помилка:", error);
-    res.status(500).json({ message: "Помилка при додаванні коментаря", error: error.message });
+    console.error("❌ SQL-помилка (addCommentToNotification):", error);
+    return res.status(500).json({ message: "Помилка при додаванні коментаря", error: error.message });
   }
 };
 
-// 🗑 Видалити всі сповіщення користувача
+// 🗑 Видалити всі сповіщення поточного користувача
 const deleteAllNotifications = async (req, res) => {
-  const userId = req.user?.id;
-  if (!userId) return res.status(401).json({ message: "Не авторизований." });
+  const userId = extractUserId(req);
+
+  if (!userId) {
+    return res.status(401).json({ message: "Не авторизований." });
+  }
 
   try {
     await pool.query(`DELETE FROM notifications WHERE user_id = $1`, [userId]);
-    res.json({ success: true });
+    return res.json({ success: true });
   } catch (error) {
-    console.error("❌ SQL-помилка:", error);
-    res.status(500).json({ message: "Помилка при видаленні сповіщень", error: error.message });
+    console.error("❌ SQL-помилка (deleteAllNotifications):", error);
+    return res.status(500).json({ message: "Помилка при видаленні сповіщень", error: error.message });
   }
 };
 
