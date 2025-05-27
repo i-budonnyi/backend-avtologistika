@@ -175,7 +175,7 @@ const addCommentToNotification = async (req, res) => {
     return res.status(200).json({ message: "Коментар додано", data: result.rows[0] });
   } catch (error) {
     console.error("❌ [COMMENT] SQL:", error.message);
-    return res.status(500).json({ message: "Помилка", error: error.message });
+    return res.status(500).json({ message: "Помілка", error: error.message });
   }
 };
 
