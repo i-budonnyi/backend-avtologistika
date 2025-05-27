@@ -11,32 +11,31 @@ const {
   deleteAllNotifications,
 } = require("../controllers/notificationController");
 
-const { getUserProfile, logout } = require("../controllers/userController"); // ✅ Підключено з іншого маршруту
-const verifyAccessToken = require("../middleware/verifyAccessToken");
+const {
+  getUserProfile,
+  logout
+} = require("../controllers/userController");
 
-// ✅ Додаткові маршрути профілю, якщо потрібно
-router.get("/user/profile", verifyAccessToken, getUserProfile);
-router.post("/user/logout", verifyAccessToken, logout);
+const authenticate = require("../middleware/verifyAccessToken"); // ✅ Має додавати req.user
 
-// 🔔 Створити нове сповіщення
-router.post("/", verifyAccessToken, addNotification);
+// 📌 Переконайся, що у verifyAccessToken є щось на кшталт:
+// req.user = decodedToken;
 
-// 📩 Отримати всі сповіщення поточного користувача
-router.get("/me", verifyAccessToken, getUserNotifications);
+//
+// -------------------- ПРОФІЛЬ --------------------
+//
+router.get("/user/profile", authenticate, getUserProfile);
+router.post("/user/logout", authenticate, logout);
 
-// 📥 Отримати сповіщення по userId (наприклад, для адміністратора)
-router.get("/user/:id", verifyAccessToken, getNotificationsByUserId);
-
-// 🔄 Оновити статус
-router.patch("/:id/status", verifyAccessToken, updateNotificationStatus);
-
-// ✅ Позначити як прочитане
-router.patch("/:id/read", verifyAccessToken, markAsRead);
-
-// 💬 Додати коментар
-router.patch("/:id/comment", verifyAccessToken, addCommentToNotification);
-
-// 🗑 Видалити всі сповіщення
-router.delete("/me", verifyAccessToken, deleteAllNotifications);
+//
+// ------------------ СПОВІЩЕННЯ ------------------
+//
+router.post("/", authenticate, addNotification);
+router.get("/me", authenticate, getUserNotifications);
+router.get("/user/:id", authenticate, getNotificationsByUserId);
+router.patch("/:id/status", authenticate, updateNotificationStatus);
+router.patch("/:id/read", authenticate, markAsRead);
+router.patch("/:id/comment", authenticate, addCommentToNotification);
+router.delete("/me", authenticate, deleteAllNotifications);
 
 module.exports = router;
