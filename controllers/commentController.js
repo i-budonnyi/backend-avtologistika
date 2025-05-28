@@ -38,7 +38,7 @@ const getCommentsByEntry = async (req, res) => {
     const comments = await sequelize.query(
       `SELECT 
           c.id, 
-          c.text AS text,
+          c.comment AS text,
           to_char(c.created_at, 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') AS "createdAt",
           u.id AS authorId,
           u.first_name AS author_first_name,
@@ -85,7 +85,7 @@ const addComment = async (req, res) => {
 
   try {
     await sequelize.query(
-      `INSERT INTO comments (${column}, user_id, text, created_at, updated_at)
+      `INSERT INTO comments (${column}, user_id, comment, created_at, updated_at)
        VALUES (:entry_id, :user_id, :comment, NOW(), NOW())`,
       {
         replacements: { entry_id, user_id, comment },
