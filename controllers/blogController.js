@@ -2,7 +2,7 @@ const { QueryTypes } = require("sequelize");
 const jwt = require("jsonwebtoken");
 const sequelize = require("../config/database");
 const { io } = require("../index"); // 📡 WebSocket-підключення
-const { sendNotification } = require("../server"); // 🔔 Підключаємо функцію для персональних сповіщень
+const { sendNotification } = require("../index"); // 🔔 Підключаємо функцію для персональних сповіщень
 
 // ✅ Middleware для обов'язкової авторизації
 const authenticateUser = (req, res, next) => {
