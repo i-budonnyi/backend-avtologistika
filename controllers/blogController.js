@@ -2,6 +2,7 @@ const { QueryTypes } = require("sequelize");
 const jwt = require("jsonwebtoken");
 const sequelize = require("../config/database");
 const { io } = require("../index"); // 📡 WebSocket-підключення
+const { sendNotification } = require("../server"); // 🔔 Підключаємо функцію для персональних сповіщень
 
 // ✅ Middleware для обов'язкової авторизації
 const authenticateUser = (req, res, next) => {
@@ -77,7 +78,7 @@ const createBlogEntry = async (req, res) => {
       }
     );
 
-    // 📡 WebSocket: повідомляємо всім
+    // 📡 WebSocket — широкомовне повідомлення
     io.emit("entry_created", {
       id: result[0].id,
       title,
@@ -85,6 +86,9 @@ const createBlogEntry = async (req, res) => {
       type,
       user_id: userId,
     });
+
+    // 🔔 Персональне сповіщення
+    sendNotification(userId, `✅ ${type === "blog" ? "Блог" : "Ідея"} успішно створено: "${title}"`);
 
     res.status(201).json({ message: "Запис створено", id: result[0].id });
   } catch (error) {
@@ -158,7 +162,7 @@ const addComment = async (req, res) => {
 
     console.log(`[addComment] ✅ Коментар додано`);
 
-    // 📡 WebSocket: повідомляємо про новий коментар
+    // 📡 WebSocket: широкомовно всім
     io.emit("new_comment", {
       entry_id,
       entry_type,

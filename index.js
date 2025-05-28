@@ -5,8 +5,8 @@ const path = require("path");
 const jwt = require("jsonwebtoken");
 require("dotenv").config();
 
-const http = require("http");                    // ⬅️ Додано
-const { Server } = require("socket.io");         // ⬅️ Додано
+const http = require("http");
+const { Server } = require("socket.io");
 
 const sequelize = require("./config/db");
 const authRoutes = require("./routes/authRoutes");
@@ -14,11 +14,11 @@ const ideaRoutes = require("./routes/ideaRoutes");
 const { register, login } = require("./controllers/authController");
 
 const app = express();
-const server = http.createServer(app);           // ⬅️ створення HTTP-сервера
+const server = http.createServer(app);
 const PORT = process.env.PORT || 10000;
 const JWT_SECRET = process.env.JWT_SECRET || "your_secret_key";
 
-// 🔌 Ініціалізація WebSocket
+// 🔌 WebSocket
 const io = new Server(server, {
   cors: {
     origin: "https://leanavtologistika.netlify.app",
@@ -27,18 +27,41 @@ const io = new Server(server, {
   }
 });
 
+// 🧠 Користувачі, які підключені
+const clients = new Map(); // userId => socket
+
 io.on("connection", (socket) => {
   console.log("🟢 WebSocket підключено:", socket.id);
 
+  socket.on("register", (userId) => {
+    console.log(`👤 WebSocket зареєстровано для userId: ${userId}`);
+    clients.set(userId, socket);
+  });
+
   socket.on("disconnect", () => {
     console.log("🔴 WebSocket відключено:", socket.id);
+    for (const [userId, s] of clients.entries()) {
+      if (s === socket) clients.delete(userId);
+    }
   });
 });
 
-// ⬇️ Експортуємо io для доступу в контролерах
-module.exports.io = io;
+// 🔔 Функція для надсилання сповіщень
+const sendNotification = (userId, message) => {
+  const socket = clients.get(userId);
+  if (socket) {
+    socket.emit("notification", { message });
+    console.log(`📤 Надіслано сповіщення користувачу ${userId}: ${message}`);
+  } else {
+    console.log(`⚠️ Користувач ${userId} не підключений до WebSocket`);
+  }
+};
 
-// ✅ CORS — ДОДАНО PATCH
+// 🌐 Експортуємо, якщо потрібно використовувати в інших файлах
+module.exports.io = io;
+module.exports.sendNotification = sendNotification;
+
+// ✅ CORS
 app.use(cors({
   origin: "https://leanavtologistika.netlify.app",
   methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
@@ -71,7 +94,7 @@ app.use((req, res, next) => {
   next();
 });
 
-// 🔐 Middleware для перевірки токена
+// 🔐 JWT Middleware
 const authenticateToken = (req, res, next) => {
   const authHeader = req.headers.authorization;
   const token = authHeader && authHeader.split(" ")[1];
@@ -89,7 +112,7 @@ app.post("/register", register);
 app.use("/api/authRoutes", authRoutes);
 app.use("/api/ideaRoutes", ideaRoutes);
 
-// 📁 Динамічне підключення інших маршрутів
+// 📁 Динамічно підключаємо інші маршрути
 const routesDir = path.join(__dirname, "routes");
 fs.readdirSync(routesDir).forEach((file) => {
   if (
@@ -127,7 +150,7 @@ app.use((req, res, next) => {
   next();
 });
 
-// 🔌 Підключення до бази
+// 📦 Підключення до бази
 sequelize.authenticate()
   .then(() => console.log("[DATABASE] Підключення успішне"))
   .catch((error) => {
@@ -135,7 +158,7 @@ sequelize.authenticate()
     process.exit(1);
   });
 
-// 🚀 Запуск сервера через HTTP-сервер
+// 🚀 Запуск сервера
 server.listen(PORT, () => {
   console.log(`[SERVER] Сервер Express + WebSocket запущено на порту ${PORT}`);
 });
