@@ -1,5 +1,5 @@
-// controllers/attachmentController.js
-const Attachment = require("../models/attachment");
+const sequelize = require("../config/db");
+const { QueryTypes } = require("sequelize");
 const multer = require("multer");
 const path = require("path");
 
@@ -21,25 +21,29 @@ exports.uploadFile = [
   upload.single("file"), // Очікуємо один файл із ключем "file"
   async (req, res) => {
     try {
-      const { application_id } = req.body; // ID заявки
+      const { application_id } = req.body;
       const file = req.file;
 
       if (!file) {
         return res.status(400).json({ error: "No file uploaded" });
       }
 
-      // Зберігаємо інформацію про файл у БД
-      const attachment = await Attachment.create({
-        application_id,
-        file_name: file.originalname,
-        file_path: file.path,
-      });
+      const [attachment] = await sequelize.query(
+        `INSERT INTO attachments (application_id, file_name, file_path)
+         VALUES ($1, $2, $3)
+         RETURNING *`,
+        {
+          bind: [application_id, file.originalname, file.path],
+          type: QueryTypes.INSERT,
+        }
+      );
 
       res.status(201).json({
         message: "File uploaded successfully",
         attachment,
       });
     } catch (error) {
+      console.error("❌ uploadFile error:", error);
       res.status(500).json({ error: error.message });
     }
   },

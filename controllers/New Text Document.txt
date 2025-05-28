@@ -1,9 +1,11 @@
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
-const UserRoles = require("../models/UserRoles"); // Модель для роботи з таблицею користувачів
+const sequelize = require("../config/db");
+const { QueryTypes } = require("sequelize");
+
 const JWT_SECRET = process.env.JWT_SECRET || "your_secret_key";
 
-// Функція для логування всіх дій
+// Р›РѕРіСѓРІР°РЅРЅСЏ
 const log = (level, message, details = {}) => {
   const timestamp = new Date().toISOString();
   console[level](`[${timestamp}] ${message}`);
@@ -12,21 +14,21 @@ const log = (level, message, details = {}) => {
   }
 };
 
-// Функція для генерації токена
+// Р“РµРЅРµСЂР°С†С–СЏ С‚РѕРєРµРЅР°
 const generateToken = (user) => {
   return jwt.sign(
     {
       user_id: user.id,
-      role: user.role, // Передаємо роль у токен
+      role: user.role,
     },
     JWT_SECRET,
-    { expiresIn: "5h" } // Термін дії токена встановлено на 5 годин
+    { expiresIn: "5h" }
   );
 };
 
-// Реєстрація користувача
+// Р РµС”СЃС‚СЂР°С†С–СЏ
 const register = async (req, res) => {
-  log("info", "Отримано запит на реєстрацію", {
+  log("info", "Р—Р°РїРёС‚ РЅР° СЂРµС”СЃС‚СЂР°С†С–СЋ", {
     method: req.method,
     url: req.originalUrl,
     ip: req.ip,
@@ -37,51 +39,44 @@ const register = async (req, res) => {
     const { first_name, last_name, email, password, phone, role_id } = req.body;
 
     if (!first_name || !last_name || !email || !password || !phone || !role_id) {
-      log("warn", "Не всі поля заповнені", req.body);
-      return res.status(400).json({ message: "Заповніть всі поля" });
+      return res.status(400).json({ message: "Р’СЃС– РїРѕР»СЏ РѕР±РѕРІ'СЏР·РєРѕРІС–" });
     }
 
-    log("info", "Перевірка, чи існує користувач із таким email", { email });
-    const existingUser = await UserRoles.findOne({ where: { email } });
+    const [existingUser] = await sequelize.query(
+      `SELECT * FROM user_roles WHERE email = $1`,
+      { bind: [email], type: QueryTypes.SELECT }
+    );
 
     if (existingUser) {
-      log("warn", "Користувач із таким email вже існує", { email });
-      return res.status(400).json({ message: "Користувач з таким email вже існує" });
+      return res.status(400).json({ message: "РљРѕСЂРёСЃС‚СѓРІР°С‡ Р· С†РёРј email РІР¶Рµ С–СЃРЅСѓС”" });
     }
 
-    log("info", "Хешування пароля");
     const hashedPassword = await bcrypt.hash(password, 10);
-
-    log("info", "Створення нового користувача", { first_name, last_name, email });
-
-    // Визначаємо назву ролі за role_id
     const roleName = role_id === 1 ? "worker" : role_id === 2 ? "ambassador" : "user";
 
-    const newUser = await UserRoles.create({
-      first_name,
-      last_name,
-      email,
-      password: hashedPassword,
-      phone,
-      role_id,
-      role: roleName, // Додаємо роль у базу
-    });
-
-    log("info", "Користувач успішно зареєстрований", { id: newUser.id, email: newUser.email });
+    const [newUser] = await sequelize.query(
+      `INSERT INTO user_roles (first_name, last_name, email, password, phone, role_id, role)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)
+       RETURNING *`,
+      {
+        bind: [first_name, last_name, email, hashedPassword, phone, role_id, roleName],
+        type: QueryTypes.INSERT,
+      }
+    );
 
     return res.status(201).json({
-      message: "Користувач успішно зареєстрований",
+      message: "РљРѕСЂРёСЃС‚СѓРІР°С‡ СѓСЃРїС–С€РЅРѕ Р·Р°СЂРµС”СЃС‚СЂРѕРІР°РЅРёР№",
       user: { id: newUser.id, email: newUser.email, role: newUser.role },
     });
   } catch (error) {
-    log("error", "Помилка під час реєстрації", { message: error.message, stack: error.stack });
-    return res.status(500).json({ message: "Помилка сервера", error: error.message });
+    log("error", "РџРѕРјРёР»РєР° РїСЂРё СЂРµС”СЃС‚СЂР°С†С–С—", { message: error.message, stack: error.stack });
+    return res.status(500).json({ message: "РџРѕРјРёР»РєР° СЃРµСЂРІРµСЂР°", error: error.message });
   }
 };
 
-// Вхід користувача
+// Р’С…С–Рґ
 const login = async (req, res) => {
-  log("info", "Отримано запит на вхід", {
+  log("info", "Р—Р°РїРёС‚ РЅР° РІС…С–Рґ", {
     method: req.method,
     url: req.originalUrl,
     ip: req.ip,
@@ -92,66 +87,48 @@ const login = async (req, res) => {
     const { email, password } = req.body;
 
     if (!email || !password) {
-      log("warn", "Не всі поля заповнені", { email, password });
-      return res.status(400).json({ message: "Заповніть всі поля" });
+      return res.status(400).json({ message: "Р’СЃС– РїРѕР»СЏ РѕР±РѕРІ'СЏР·РєРѕРІС–" });
     }
 
-    log("info", "Пошук користувача за email", { email });
-    const user = await UserRoles.findOne({ where: { email } });
-
-    if (!user) {
-      log("warn", "Користувача не знайдено", { email });
-      return res.status(404).json({ message: "Користувача не знайдено" });
-    }
-
-    log("info", "Перевірка пароля для користувача", { email });
-    const isPasswordValid = await bcrypt.compare(password, user.password);
-
-    if (!isPasswordValid) {
-      log("warn", "Невірний пароль", { email });
-      return res.status(401).json({ message: "Невірний пароль" });
-    }
-
-    log("info", "Отримання ролі користувача", { user_id: user.id });
-
-    // Визначаємо роль для передачі у токен
-    const roleName = user.role_id === 1 ? "worker" : user.role_id === 2 ? "ambassador" : "user";
-
-    log("info", "Генерація JWT токена для користувача", { user_id: user.id, role: roleName });
-    const token = jwt.sign(
-      {
-        user_id: user.id,
-        role: roleName, // Тепер роль записується у токен
-      },
-      JWT_SECRET,
-      { expiresIn: "5h" }
+    const [user] = await sequelize.query(
+      `SELECT * FROM user_roles WHERE email = $1`,
+      { bind: [email], type: QueryTypes.SELECT }
     );
 
-    log("info", "Вхід успішний", { user_id: user.id, email: user.email, role: roleName });
+    if (!user) {
+      return res.status(404).json({ message: "РљРѕСЂРёСЃС‚СѓРІР°С‡Р° РЅРµ Р·РЅР°Р№РґРµРЅРѕ" });
+    }
+
+    const isPasswordValid = await bcrypt.compare(password, user.password);
+    if (!isPasswordValid) {
+      return res.status(401).json({ message: "РќРµРІС–СЂРЅРёР№ РїР°СЂРѕР»СЊ" });
+    }
+
+    const token = generateToken(user);
 
     return res.status(200).json({
-      message: "Вхід успішний",
+      message: "Р’С…С–Рґ РІРёРєРѕРЅР°РЅРѕ СѓСЃРїС–С€РЅРѕ",
       token,
       user: {
         id: user.id,
         email: user.email,
-        role: roleName, // Тепер фронт отримує role
+        role: user.role,
       },
     });
   } catch (error) {
-    log("error", "Помилка під час входу", { message: error.message, stack: error.stack });
-    return res.status(500).json({ message: "Помилка сервера", error: error.message });
+    log("error", "РџРѕРјРёР»РєР° РїСЂРё РІС…РѕРґС–", { message: error.message, stack: error.stack });
+    return res.status(500).json({ message: "РџРѕРјРёР»РєР° СЃРµСЂРІРµСЂР°", error: error.message });
   }
 };
 
-// Обробка 404
+// РћР±СЂРѕР±РєР° 404
 const notFound = (req, res) => {
-  log("warn", "Маршрут не знайдено", {
+  log("warn", "РњР°СЂС€СЂСѓС‚ РЅРµ Р·РЅР°Р№РґРµРЅРѕ", {
     method: req.method,
     url: req.originalUrl,
     ip: req.ip,
   });
-  res.status(404).json({ message: "Маршрут не знайдено" });
+  res.status(404).json({ message: "РњР°СЂС€СЂСѓС‚ РЅРµ Р·РЅР°Р№РґРµРЅРѕ" });
 };
 
 module.exports = {

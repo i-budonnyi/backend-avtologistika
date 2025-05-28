@@ -1,55 +1,99 @@
-// ../controllers/budgetController.js
+const sequelize = require('../config/db');
+const { QueryTypes } = require('sequelize');
 
-// Псевдокод для роботи з базою даних
-const Budget = require('../models/Budget'); // модель для роботи з бюджетами
-const Project = require('../models/Project'); // модель для роботи з проектами
-
-// Створити бюджет
+// РЎС‚РІРѕСЂРёС‚Рё РЅРѕРІРёР№ Р±СЋРґР¶РµС‚
 const createBudget = async (req, res) => {
   try {
     const { projectId, amount, description } = req.body;
 
-    // Валідація даних
     if (!projectId || !amount || !description) {
-      return res.status(400).json({ message: 'Усі поля є обов’язковими.' });
+      return res.status(400).json({ message: 'РЈСЃС– РїРѕР»СЏ С” РѕР±РѕРІвЂ™СЏР·РєРѕРІРёРјРё.' });
     }
 
-    // Перевірити, чи існує проект
-    const project = await Project.findByPk(projectId);
+    const [project] = await sequelize.query(
+      `SELECT * FROM projects WHERE id = $1`,
+      { bind: [projectId], type: QueryTypes.SELECT }
+    );
+
     if (!project) {
-      return res.status(404).json({ message: 'Проект не знайдено.' });
+      return res.status(404).json({ message: 'РџСЂРѕС”РєС‚ РЅРµ Р·РЅР°Р№РґРµРЅРѕ.' });
     }
 
-    const budget = await Budget.create({ projectId, amount, description });
+    const [budget] = await sequelize.query(
+      `INSERT INTO budgets (project_id, amount, description)
+       VALUES ($1, $2, $3)
+       RETURNING *`,
+      {
+        bind: [projectId, amount, description],
+        type: QueryTypes.INSERT
+      }
+    );
+
     res.status(201).json(budget);
   } catch (error) {
-    res.status(500).json({ message: 'Помилка сервера.', error: error.message });
+    res.status(500).json({ message: 'РџРѕРјРёР»РєР° СЃРµСЂРІРµСЂР°.', error: error.message });
   }
 };
 
-// Отримати бюджети проекту
+// РћС‚СЂРёРјР°С‚Рё РІСЃС– Р±СЋРґР¶РµС‚Рё РїСЂРѕС”РєС‚Сѓ
 const getProjectBudgets = async (req, res) => {
   try {
     const { project_id } = req.params;
 
-    // Перевірити, чи існує проект
-    const project = await Project.findByPk(project_id);
+    const [project] = await sequelize.query(
+      `SELECT * FROM projects WHERE id = $1`,
+      { bind: [project_id], type: QueryTypes.SELECT }
+    );
+
     if (!project) {
-      return res.status(404).json({ message: 'Проект не знайдено.' });
+      return res.status(404).json({ message: 'РџСЂРѕС”РєС‚ РЅРµ Р·РЅР°Р№РґРµРЅРѕ.' });
     }
 
-    const budgets = await Budget.findAll({ where: { projectId: project_id } });
+    const budgets = await sequelize.query(
+      `SELECT * FROM budgets WHERE project_id = $1`,
+      { bind: [project_id], type: QueryTypes.SELECT }
+    );
+
     res.status(200).json(budgets);
   } catch (error) {
-    res.status(500).json({ message: 'Помилка сервера.', error: error.message });
+    res.status(500).json({ message: 'РџРѕРјРёР»РєР° СЃРµСЂРІРµСЂР°.', error: error.message });
   }
 };
 
-// Оновити бюджет
+// РћРЅРѕРІРёС‚Рё Р±СЋРґР¶РµС‚
 const updateBudget = async (req, res) => {
   try {
     const { id } = req.params;
     const { amount, description } = req.body;
 
-    // Знайти бюджет за ID
-    co
+    const [existing] = await sequelize.query(
+      `SELECT * FROM budgets WHERE id = $1`,
+      { bind: [id], type: QueryTypes.SELECT }
+    );
+
+    if (!existing) {
+      return res.status(404).json({ message: 'Р‘СЋРґР¶РµС‚ РЅРµ Р·РЅР°Р№РґРµРЅРѕ.' });
+    }
+
+    const [updated] = await sequelize.query(
+      `UPDATE budgets
+       SET amount = $1, description = $2
+       WHERE id = $3
+       RETURNING *`,
+      {
+        bind: [amount, description, id],
+        type: QueryTypes.UPDATE
+      }
+    );
+
+    res.status(200).json(updated);
+  } catch (error) {
+    res.status(500).json({ message: 'РџРѕРјРёР»РєР° СЃРµСЂРІРµСЂР°.', error: error.message });
+  }
+};
+
+module.exports = {
+  createBudget,
+  getProjectBudgets,
+  updateBudget,
+};

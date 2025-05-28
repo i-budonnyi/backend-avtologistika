@@ -1,77 +1,95 @@
-// Імпортуємо модель `Permissions`
-const Permissions = require('../models/Permissions');
+const sequelize = require('../config/db');
+const { QueryTypes } = require('sequelize');
 
-// Функція для створення нового дозволу
+// Створити новий дозвіл
 exports.createPermission = async (req, res) => {
-    try {
-        const { name, description } = req.body;
+  try {
+    const { name, description } = req.body;
 
-        // Перевірка, чи всі необхідні поля передані
-        if (!name) {
-            return res.status(400).json({ message: 'Назва дозволу є обов’язковою.' });
-        }
-
-        // Створюємо запис у таблиці `permissions`
-        const permission = await Permissions.create({ name, description });
-        res.status(201).json({ message: 'Дозвіл успішно створено.', permission });
-    } catch (error) {
-        // Обробка помилок сервера
-        res.status(500).json({ message: 'Помилка сервера.', error });
+    if (!name) {
+      return res.status(400).json({ message: 'Назва дозволу є обов’язковою.' });
     }
+
+    const [permission] = await sequelize.query(
+      `INSERT INTO permissions (name, description)
+       VALUES ($1, $2)
+       RETURNING *`,
+      {
+        bind: [name, description],
+        type: QueryTypes.INSERT,
+      }
+    );
+
+    res.status(201).json({ message: 'Дозвіл успішно створено.', permission });
+  } catch (error) {
+    console.error('❌ createPermission error:', error);
+    res.status(500).json({ message: 'Помилка сервера.', error });
+  }
 };
 
-// Функція для отримання всіх дозволів
+// Отримати всі дозволи
 exports.getAllPermissions = async (req, res) => {
-    try {
-        // Отримуємо всі записи з таблиці `permissions`
-        const permissions = await Permissions.findAll();
-        res.status(200).json(permissions);
-    } catch (error) {
-        // Обробка помилок сервера
-        res.status(500).json({ message: 'Помилка сервера.', error });
-    }
+  try {
+    const permissions = await sequelize.query(
+      `SELECT * FROM permissions`,
+      { type: QueryTypes.SELECT }
+    );
+
+    res.status(200).json(permissions);
+  } catch (error) {
+    console.error('❌ getAllPermissions error:', error);
+    res.status(500).json({ message: 'Помилка сервера.', error });
+  }
 };
 
-// Функція для оновлення дозволу
+// Оновити дозвіл
 exports.updatePermission = async (req, res) => {
-    try {
-        const { id } = req.params; // Отримуємо `id` з параметрів URL
-        const { name, description } = req.body;
+  try {
+    const { id } = req.params;
+    const { name, description } = req.body;
 
-        // Оновлюємо запис у таблиці `permissions`
-        const updatedPermission = await Permissions.update(
-            { name, description },
-            { where: { id } }
-        );
+    const [updated] = await sequelize.query(
+      `UPDATE permissions
+       SET name = $1, description = $2
+       WHERE id = $3
+       RETURNING *`,
+      {
+        bind: [name, description, id],
+        type: QueryTypes.UPDATE,
+      }
+    );
 
-        // Перевіряємо, чи було оновлено хоча б один запис
-        if (!updatedPermission[0]) {
-            return res.status(404).json({ message: 'Дозвіл не знайдено.' });
-        }
-
-        res.status(200).json({ message: 'Дозвіл успішно оновлено.' });
-    } catch (error) {
-        // Обробка помилок сервера
-        res.status(500).json({ message: 'Помилка сервера.', error });
+    if (!updated) {
+      return res.status(404).json({ message: 'Дозвіл не знайдено.' });
     }
+
+    res.status(200).json({ message: 'Дозвіл успішно оновлено.' });
+  } catch (error) {
+    console.error('❌ updatePermission error:', error);
+    res.status(500).json({ message: 'Помилка сервера.', error });
+  }
 };
 
-// Функція для видалення дозволу
+// Видалити дозвіл
 exports.deletePermission = async (req, res) => {
-    try {
-        const { id } = req.params; // Отримуємо `id` з параметрів URL
+  try {
+    const { id } = req.params;
 
-        // Видаляємо запис з таблиці `permissions`
-        const deletedPermission = await Permissions.destroy({ where: { id } });
+    const [deleted] = await sequelize.query(
+      `DELETE FROM permissions WHERE id = $1 RETURNING *`,
+      {
+        bind: [id],
+        type: QueryTypes.DELETE,
+      }
+    );
 
-        // Перевіряємо, чи було видалено хоча б один запис
-        if (!deletedPermission) {
-            return res.status(404).json({ message: 'Дозвіл не знайдено.' });
-        }
-
-        res.status(200).json({ message: 'Дозвіл успішно видалено.' });
-    } catch (error) {
-        // Обробка помилок сервера
-        res.status(500).json({ message: 'Помилка сервера.', error });
+    if (!deleted) {
+      return res.status(404).json({ message: 'Дозвіл не знайдено.' });
     }
+
+    res.status(200).json({ message: 'Дозвіл успішно видалено.' });
+  } catch (error) {
+    console.error('❌ deletePermission error:', error);
+    res.status(500).json({ message: 'Помилка сервера.', error });
+  }
 };

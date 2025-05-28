@@ -1,9 +1,13 @@
-const adminPermissionsModel = require('../models/adminPermissionsModel');
+const sequelize = require('../config/db');
+const { QueryTypes } = require('sequelize');
 
 // Отримати всі записи
 const getAllAdminPermissions = async (req, res) => {
   try {
-    const permissions = await adminPermissionsModel.getAllAdminPermissions();
+    const permissions = await sequelize.query(
+      `SELECT * FROM admin_permissions`,
+      { type: QueryTypes.SELECT }
+    );
     res.json(permissions);
   } catch (err) {
     console.error('Error getting admin permissions', err);
@@ -15,7 +19,10 @@ const getAllAdminPermissions = async (req, res) => {
 const getAdminPermissionById = async (req, res) => {
   const { admin_id } = req.params;
   try {
-    const permission = await adminPermissionsModel.getAdminPermissionById(admin_id);
+    const [permission] = await sequelize.query(
+      `SELECT * FROM admin_permissions WHERE admin_id = $1`,
+      { bind: [admin_id], type: QueryTypes.SELECT }
+    );
     if (permission) {
       res.json(permission);
     } else {
@@ -31,7 +38,11 @@ const getAdminPermissionById = async (req, res) => {
 const createAdminPermission = async (req, res) => {
   const { admin_id, permission_id, assigned_at } = req.body;
   try {
-    const newPermission = await adminPermissionsModel.createAdminPermission(admin_id, permission_id, assigned_at);
+    const [newPermission] = await sequelize.query(
+      `INSERT INTO admin_permissions (admin_id, permission_id, assigned_at)
+       VALUES ($1, $2, $3) RETURNING *`,
+      { bind: [admin_id, permission_id, assigned_at], type: QueryTypes.INSERT }
+    );
     res.status(201).json(newPermission);
   } catch (err) {
     console.error('Error creating admin permission', err);
@@ -44,9 +55,14 @@ const updateAdminPermission = async (req, res) => {
   const { admin_id } = req.params;
   const { permission_id, assigned_at } = req.body;
   try {
-    const updatedPermission = await adminPermissionsModel.updateAdminPermission(admin_id, permission_id, assigned_at);
-    if (updatedPermission) {
-      res.json(updatedPermission);
+    const [updated] = await sequelize.query(
+      `UPDATE admin_permissions
+       SET permission_id = $1, assigned_at = $2
+       WHERE admin_id = $3 RETURNING *`,
+      { bind: [permission_id, assigned_at, admin_id], type: QueryTypes.UPDATE }
+    );
+    if (updated) {
+      res.json(updated);
     } else {
       res.status(404).json({ error: 'Admin permission not found' });
     }
@@ -60,8 +76,11 @@ const updateAdminPermission = async (req, res) => {
 const deleteAdminPermission = async (req, res) => {
   const { admin_id } = req.params;
   try {
-    const deletedPermission = await adminPermissionsModel.deleteAdminPermission(admin_id);
-    if (deletedPermission) {
+    const [deleted] = await sequelize.query(
+      `DELETE FROM admin_permissions WHERE admin_id = $1 RETURNING *`,
+      { bind: [admin_id], type: QueryTypes.DELETE }
+    );
+    if (deleted) {
       res.status(204).send();
     } else {
       res.status(404).json({ error: 'Admin permission not found' });
@@ -76,7 +95,12 @@ const deleteAdminPermission = async (req, res) => {
 const assignFullAdminPermissions = async (req, res) => {
   const { admin_id, permission_id } = req.body;
   try {
-    const result = await adminPermissionsModel.assignFullAdminPermissions(admin_id, permission_id);
+    const [result] = await sequelize.query(
+      `UPDATE admin_permissions
+       SET permission_id = $1, assigned_at = NOW()
+       WHERE admin_id = $2 RETURNING *`,
+      { bind: [permission_id, admin_id], type: QueryTypes.UPDATE }
+    );
     res.json(result);
   } catch (err) {
     console.error('Error assigning full admin permissions', err);
