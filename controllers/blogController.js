@@ -1,8 +1,9 @@
 const { QueryTypes } = require("sequelize");
 const jwt = require("jsonwebtoken");
 const sequelize = require("../config/database");
-const { io } = require("../index"); // 📡 WebSocket-підключення
-const { sendNotification } = require("../index"); // 🔔 Підключаємо функцію для персональних сповіщень
+
+// ❗ Імпортуй `io` і `sendNotification` саме з правильного джерела
+const { getIO, sendNotification } = require("../socket"); // замість ../index
 
 // ✅ Middleware для обов'язкової авторизації
 const authenticateUser = (req, res, next) => {
@@ -79,7 +80,7 @@ const createBlogEntry = async (req, res) => {
     );
 
     // 📡 WebSocket — широкомовне повідомлення
-    io.emit("entry_created", {
+    getIO().emit("entry_created", {
       id: result[0].id,
       title,
       description,
@@ -126,7 +127,7 @@ const deleteBlogEntry = async (req, res) => {
   }
 };
 
-// ✅ Додати коментар з іменем
+// ✅ Додати коментар
 const addComment = async (req, res) => {
   const { entry_id, entry_type, comment } = req.body;
   const user_id = req.user?.user_id;
@@ -162,8 +163,7 @@ const addComment = async (req, res) => {
 
     console.log(`[addComment] ✅ Коментар додано`);
 
-    // 📡 WebSocket: широкомовно всім
-    io.emit("new_comment", {
+    getIO().emit("new_comment", {
       entry_id,
       entry_type,
       comment,
