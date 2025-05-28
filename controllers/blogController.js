@@ -1,11 +1,9 @@
 const { QueryTypes } = require("sequelize");
 const jwt = require("jsonwebtoken");
 const sequelize = require("../config/database");
+const { getIO, sendNotification } = require("../socket");
 
-// ❗ Імпортуй `io` і `sendNotification` саме з правильного джерела
-const { getIO, sendNotification } = require("../socket"); // замість ../index
-
-// ✅ Middleware для обов'язкової авторизації
+// 🔐 Middleware авторизації
 const authenticateUser = (req, res, next) => {
   const authHeader = req.headers.authorization;
   if (!authHeader || !authHeader.startsWith("Bearer ")) {
@@ -177,6 +175,7 @@ const addComment = async (req, res) => {
   }
 };
 
+// 📦 Експорт
 module.exports = {
   authenticateUser,
   getAllEntries,
