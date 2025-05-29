@@ -38,7 +38,7 @@ const getCommentsByEntry = async (req, res) => {
     const comments = await sequelize.query(
       `SELECT 
           c.id, 
-          c.text AS text,
+          c.comment AS text,
           to_char(c.created_at, 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') AS "createdAt",
           u.id AS authorId,
           u.first_name AS author_first_name,
@@ -65,12 +65,12 @@ const getCommentsByEntry = async (req, res) => {
 
 // ➕ Додати коментар
 const addComment = async (req, res) => {
-  const { entry_id, entry_type, text } = req.body;
+  const { entry_id, entry_type, comment } = req.body;
   const user_id = req.user?.id;
 
-  if (!entry_id || !entry_type || !text || !user_id) {
+  if (!entry_id || !entry_type || !comment || !user_id) {
     return res.status(400).json({
-      error: "Всі поля обов'язкові (entry_id, entry_type, text, user_id).",
+      error: "Всі поля обов'язкові (entry_id, entry_type, comment, user_id).",
     });
   }
 
@@ -85,18 +85,17 @@ const addComment = async (req, res) => {
 
   try {
     const [inserted] = await sequelize.query(
-      `INSERT INTO comments (${column}, user_id, text, created_at, updated_at)
-       VALUES (:entry_id, :user_id, :text, NOW(), NOW())
-       RETURNING id, text, created_at`,
+      `INSERT INTO comments (${column}, user_id, comment, created_at, updated_at)
+       VALUES (:entry_id, :user_id, :comment, NOW(), NOW())
+       RETURNING id, comment, created_at`,
       {
-        replacements: { entry_id, user_id, text },
+        replacements: { entry_id, user_id, comment },
         type: QueryTypes.INSERT,
       }
     );
 
-    const comment = inserted[0]; // обов'язково звертаємося до масиву
-    console.log(`[addComment] ✅ Коментар додано ID: ${comment.id}`);
-    res.status(201).json({ comment });
+    const result = inserted[0];
+    res.status(201).json({ comment: result });
   } catch (err) {
     console.error("[addComment] ❌", err.message);
     res.status(500).json({ error: err.message });
@@ -135,7 +134,6 @@ const deleteComment = async (req, res) => {
   }
 };
 
-// 📦 Експорт
 module.exports = {
   authenticateUser,
   getCommentsByEntry,
