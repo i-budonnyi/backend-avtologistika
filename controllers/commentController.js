@@ -63,7 +63,6 @@ const getCommentsByEntry = async (req, res) => {
   }
 };
 
-
 // ➕ Додати коментар
 const addComment = async (req, res) => {
   const { entry_id, entry_type, text } = req.body;
@@ -85,7 +84,7 @@ const addComment = async (req, res) => {
   }
 
   try {
-    const [comment] = await sequelize.query(
+    const [inserted] = await sequelize.query(
       `INSERT INTO comments (${column}, user_id, text, created_at, updated_at)
        VALUES (:entry_id, :user_id, :text, NOW(), NOW())
        RETURNING id, text, created_at`,
@@ -95,7 +94,8 @@ const addComment = async (req, res) => {
       }
     );
 
-    console.log(`[addComment] ✅ Коментар додано ID: ${comment?.id}`);
+    const comment = inserted[0]; // обов'язково звертаємося до масиву
+    console.log(`[addComment] ✅ Коментар додано ID: ${comment.id}`);
     res.status(201).json({ comment });
   } catch (err) {
     console.error("[addComment] ❌", err.message);
