@@ -37,22 +37,22 @@ const getCommentsByEntry = async (req, res) => {
   try {
     const comments = await sequelize.query(
       `SELECT 
-          c.id, 
-          c.comment AS text,
-          to_char(c.created_at, 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') AS "createdAt",
-          u.id AS authorId,
-          u.first_name AS author_first_name,
-          u.last_name AS author_last_name,
-          u.email AS author_email,
-          CASE 
-              WHEN c.blog_id IS NOT NULL THEN 'blog'
-              WHEN c.idea_id IS NOT NULL THEN 'idea'
-              WHEN c.problem_id IS NOT NULL THEN 'problem'
-          END AS entry_type
-       FROM comments c
-       LEFT JOIN users u ON c.user_id = u.id
-       WHERE c.blog_id = :entry_id OR c.idea_id = :entry_id OR c.problem_id = :entry_id
-       ORDER BY c.created_at DESC`,
+        c.id,
+        c.text,
+        to_char(c.created_at, 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') AS "createdAt",
+        u.id AS authorId,
+        u.first_name AS author_first_name,
+        u.last_name AS author_last_name,
+        u.email AS author_email,
+        CASE 
+          WHEN c.blog_id IS NOT NULL THEN 'blog'
+          WHEN c.idea_id IS NOT NULL THEN 'idea'
+          WHEN c.problem_id IS NOT NULL THEN 'problem'
+        END AS entry_type
+      FROM comments c
+      LEFT JOIN users u ON c.user_id = u.id
+      WHERE c.blog_id = :entry_id OR c.idea_id = :entry_id OR c.problem_id = :entry_id
+      ORDER BY c.created_at DESC`,
       { replacements: { entry_id }, type: QueryTypes.SELECT }
     );
 
@@ -65,12 +65,12 @@ const getCommentsByEntry = async (req, res) => {
 
 // ➕ Додати коментар
 const addComment = async (req, res) => {
-  const { entry_id, entry_type, comment } = req.body;
+  const { entry_id, entry_type, text } = req.body;
   const user_id = req.user?.id;
 
-  if (!entry_id || !entry_type || !comment || !user_id) {
+  if (!entry_id || !entry_type || !text || !user_id) {
     return res.status(400).json({
-      error: "Всі поля обов'язкові (entry_id, entry_type, comment, user_id).",
+      error: "Всі поля обов'язкові (entry_id, entry_type, text, user_id).",
     });
   }
 
@@ -84,17 +84,18 @@ const addComment = async (req, res) => {
   }
 
   try {
-    await sequelize.query(
-      `INSERT INTO comments (${column}, user_id, comment, created_at, updated_at)
-       VALUES (:entry_id, :user_id, :comment, NOW(), NOW())`,
+    const [comment] = await sequelize.query(
+      `INSERT INTO comments (${column}, user_id, text, created_at, updated_at)
+       VALUES (:entry_id, :user_id, :text, NOW(), NOW())
+       RETURNING id, text, created_at`,
       {
-        replacements: { entry_id, user_id, comment },
+        replacements: { entry_id, user_id, text },
         type: QueryTypes.INSERT,
       }
     );
 
-    console.log(`[addComment] ✅ Коментар додано`);
-    res.status(201).json({ message: "Коментар успішно додано." });
+    console.log(`[addComment] ✅ Коментар додано ID: ${comment?.id}`);
+    res.status(201).json({ comment });
   } catch (err) {
     console.error("[addComment] ❌", err.message);
     res.status(500).json({ error: err.message });
