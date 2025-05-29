@@ -37,22 +37,22 @@ const getCommentsByEntry = async (req, res) => {
   try {
     const comments = await sequelize.query(
       `SELECT 
-        c.id,
-        c.text,
-        to_char(c.created_at, 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') AS "createdAt",
-        u.id AS authorId,
-        u.first_name AS author_first_name,
-        u.last_name AS author_last_name,
-        u.email AS author_email,
-        CASE 
-          WHEN c.blog_id IS NOT NULL THEN 'blog'
-          WHEN c.idea_id IS NOT NULL THEN 'idea'
-          WHEN c.problem_id IS NOT NULL THEN 'problem'
-        END AS entry_type
-      FROM comments c
-      LEFT JOIN users u ON c.user_id = u.id
-      WHERE c.blog_id = :entry_id OR c.idea_id = :entry_id OR c.problem_id = :entry_id
-      ORDER BY c.created_at DESC`,
+          c.id, 
+          c.text AS text,
+          to_char(c.created_at, 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') AS "createdAt",
+          u.id AS authorId,
+          u.first_name AS author_first_name,
+          u.last_name AS author_last_name,
+          u.email AS author_email,
+          CASE 
+              WHEN c.blog_id IS NOT NULL THEN 'blog'
+              WHEN c.idea_id IS NOT NULL THEN 'idea'
+              WHEN c.problem_id IS NOT NULL THEN 'problem'
+          END AS entry_type
+       FROM comments c
+       LEFT JOIN users u ON c.user_id = u.id
+       WHERE c.blog_id = :entry_id OR c.idea_id = :entry_id OR c.problem_id = :entry_id
+       ORDER BY c.created_at DESC`,
       { replacements: { entry_id }, type: QueryTypes.SELECT }
     );
 
@@ -62,6 +62,7 @@ const getCommentsByEntry = async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 };
+
 
 // ➕ Додати коментар
 const addComment = async (req, res) => {
