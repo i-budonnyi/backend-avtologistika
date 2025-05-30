@@ -127,7 +127,7 @@ const deleteComment = async (req, res) => {
     );
 
     console.log(`[deleteComment] ✅ Видалено коментар ID ${id}`);
-    res.status(200).json({ message: "Коментар успішно видалено." });
+    res.status(200).json({ message: "Комнтар успішно видалено." });
   } catch (err) {
     console.error("[deleteComment] ❌", err.message);
     res.status(500).json({ error: err.message });
