@@ -74,19 +74,43 @@ const addComment = async (req, res) => {
     });
   }
 
-  const column =
-    entry_type === "blog" ? "blog_id" :
-    entry_type === "idea" ? "idea_id" :
-    entry_type === "problem" ? "problem_id" : null;
+  let column;
+  let table;
 
-  if (!column) {
+  if (entry_type === "blog") {
+    column = "blog_id";
+    table = "blogs";
+  } else if (entry_type === "idea") {
+    column = "idea_id";
+    table = "ideas";
+  } else if (entry_type === "problem") {
+    column = "problem_id";
+    table = "problems";
+  } else {
     return res.status(400).json({ error: "Невідомий тип запису." });
   }
 
   try {
-    console.log("[addComment] 🟡 Додається коментар:", {
-      entry_id, entry_type, user_id, comment
+    console.log("[addComment] 🟡 Спроба вставки коментаря:", {
+      user_id,
+      entry_type,
+      column,
+      entry_id,
+      comment,
     });
+
+    // Перевірка існування запису, щоб уникнути помилок зовнішніх ключів
+    const [check] = await sequelize.query(
+      `SELECT id FROM ${table} WHERE id = :entry_id`,
+      {
+        replacements: { entry_id },
+        type: QueryTypes.SELECT,
+      }
+    );
+
+    if (!check) {
+      return res.status(404).json({ error: `Запис ${entry_type} з ID ${entry_id} не знайдено.` });
+    }
 
     const [inserted] = await sequelize.query(
       `INSERT INTO comments (${column}, user_id, text, created_at, updated_at)
@@ -99,10 +123,13 @@ const addComment = async (req, res) => {
     );
 
     const result = inserted[0];
-    console.log("[addComment] ✅ Успішно додано:", result);
+    console.log("[addComment] ✅ Коментар успішно додано:", result);
     res.status(201).json({ comment: result });
   } catch (err) {
-    console.error("[addComment] ❌ ПОМИЛКА при додаванні коментаря:", err.message);
+    console.error("[addComment] ❌ ПОМИЛКА при додаванні:", {
+      message: err.message,
+      stack: err.stack,
+    });
     res.status(500).json({ error: err.message });
   }
 };
