@@ -84,6 +84,10 @@ const addComment = async (req, res) => {
   }
 
   try {
+    console.log("[addComment] 🟡 Додається коментар:", {
+      entry_id, entry_type, user_id, comment
+    });
+
     const [inserted] = await sequelize.query(
       `INSERT INTO comments (${column}, user_id, text, created_at, updated_at)
        VALUES (:entry_id, :user_id, :comment, NOW(), NOW())
@@ -95,9 +99,10 @@ const addComment = async (req, res) => {
     );
 
     const result = inserted[0];
+    console.log("[addComment] ✅ Успішно додано:", result);
     res.status(201).json({ comment: result });
   } catch (err) {
-    console.error("[addComment] ❌", err.message);
+    console.error("[addComment] ❌ ПОМИЛКА при додаванні коментаря:", err.message);
     res.status(500).json({ error: err.message });
   }
 };
