@@ -79,7 +79,7 @@ const addComment = async (req, res) => {
 
   if (entry_type === "blog") {
     column = "blog_id";
-    table = "blogs";
+    table = "blog"; // 🔧 ОНОВЛЕНО: було blogs, стало blog
   } else if (entry_type === "idea") {
     column = "idea_id";
     table = "ideas";
@@ -91,15 +91,6 @@ const addComment = async (req, res) => {
   }
 
   try {
-    console.log("[addComment] 🟡 Спроба вставки коментаря:", {
-      user_id,
-      entry_type,
-      column,
-      entry_id,
-      comment,
-    });
-
-    // Перевірка існування запису, щоб уникнути помилок зовнішніх ключів
     const [check] = await sequelize.query(
       `SELECT id FROM ${table} WHERE id = :entry_id`,
       {
@@ -123,13 +114,9 @@ const addComment = async (req, res) => {
     );
 
     const result = inserted[0];
-    console.log("[addComment] ✅ Коментар успішно додано:", result);
     res.status(201).json({ comment: result });
   } catch (err) {
-    console.error("[addComment] ❌ ПОМИЛКА при додаванні:", {
-      message: err.message,
-      stack: err.stack,
-    });
+    console.error("[addComment] ❌", err.message);
     res.status(500).json({ error: err.message });
   }
 };
@@ -158,7 +145,6 @@ const deleteComment = async (req, res) => {
       { replacements: { comment_id: id }, type: QueryTypes.DELETE }
     );
 
-    console.log(`[deleteComment] ✅ Видалено коментар ID ${id}`);
     res.status(200).json({ message: "Коментар успішно видалено." });
   } catch (err) {
     console.error("[deleteComment] ❌", err.message);
