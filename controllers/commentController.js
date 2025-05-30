@@ -127,7 +127,7 @@ const deleteComment = async (req, res) => {
       { replacements: { comment_id: id }, type: QueryTypes.SELECT }
     );
 
-    if (!comment) return res.status(404).json({ error: "Коментар не знайдено." });
+    if (!comment) return res.status(404).json({ error: "Кментар не знайдено." });
     if (comment.user_id !== user_id)
       return res.status(403).json({ error: "Це не ваш коментар." });
 
