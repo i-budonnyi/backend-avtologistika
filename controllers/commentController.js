@@ -38,7 +38,7 @@ const getCommentsByEntry = async (req, res) => {
     const comments = await sequelize.query(
       `SELECT 
           c.id, 
-          c.comment AS text,
+          c.text AS text,
           to_char(c.created_at, 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') AS "createdAt",
           u.id AS authorId,
           u.first_name AS author_first_name,
@@ -85,9 +85,9 @@ const addComment = async (req, res) => {
 
   try {
     const [inserted] = await sequelize.query(
-      `INSERT INTO comments (${column}, user_id, comment, created_at, updated_at)
+      `INSERT INTO comments (${column}, user_id, text, created_at, updated_at)
        VALUES (:entry_id, :user_id, :comment, NOW(), NOW())
-       RETURNING id, comment, created_at`,
+       RETURNING id, text, created_at`,
       {
         replacements: { entry_id, user_id, comment },
         type: QueryTypes.INSERT,
@@ -127,7 +127,7 @@ const deleteComment = async (req, res) => {
     );
 
     console.log(`[deleteComment] ✅ Видалено коментар ID ${id}`);
-    res.status(200).json({ message: "Комнтар успішно видалено." });
+    res.status(200).json({ message: "Коментар успішно видалено." });
   } catch (err) {
     console.error("[deleteComment] ❌", err.message);
     res.status(500).json({ error: err.message });
