@@ -163,9 +163,10 @@ const addComment = async (req, res) => {
       return res.status(404).json({ error: `Запис ${entry_type} з ID ${entry_id} не знайдено.` });
     }
 
-    await sequelize.query(
+    const [inserted] = await sequelize.query(
       `INSERT INTO comments (${column}, user_id, text, created_at, updated_at)
-       VALUES (:entry_id, :user_id, :comment, NOW(), NOW())`,
+       VALUES (:entry_id, :user_id, :comment, NOW(), NOW())
+       RETURNING id, text, created_at`,
       {
         replacements: { entry_id, user_id, comment },
         type: QueryTypes.INSERT,
@@ -173,18 +174,24 @@ const addComment = async (req, res) => {
     );
 
     getIO().emit("new_comment", {
-      entry_id,
-      entry_type,
-      comment,
-      user_id,
+      entryId: entry_id,
+      comment: {
+        id: inserted[0].id,
+        text: inserted[0].text,
+        createdAt: inserted[0].created_at,
+        author_first_name: "Анонім", // Можна покращити при бажанні
+        author_last_name: "",
+        author_email: "",
+      }
     });
 
-    res.status(201).json({ message: "Коментар успішно додано." });
+    res.status(201).json({ comment: inserted[0] });
   } catch (err) {
     console.error("[addComment] ❌", err.message);
     res.status(500).json({ error: err.message });
   }
 };
+
 
 // 📤 Експорт
 module.exports = {

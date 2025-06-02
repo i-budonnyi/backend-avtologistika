@@ -32,7 +32,8 @@ const getCommentsByEntry = async (req, res) => {
 
   try {
     const comments = await sequelize.query(
-      `SELECT 
+      `
+      SELECT 
         c.id, 
         c.text,
         to_char(c.created_at, 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') AS "createdAt",
@@ -41,14 +42,15 @@ const getCommentsByEntry = async (req, res) => {
         u.last_name AS author_last_name,
         u.email AS author_email,
         CASE 
-          WHEN c.blog_id IS NOT NULL THEN 'blog'
-          WHEN c.idea_id IS NOT NULL THEN 'idea'
-          WHEN c.problem_id IS NOT NULL THEN 'problem'
+          WHEN c.blog_id = :entry_id THEN 'blog'
+          WHEN c.idea_id = :entry_id THEN 'idea'
+          WHEN c.problem_id = :entry_id THEN 'problem'
         END AS entry_type
       FROM comments c
       LEFT JOIN users u ON c.user_id = u.id
       WHERE c.blog_id = :entry_id OR c.idea_id = :entry_id OR c.problem_id = :entry_id
-      ORDER BY c.created_at DESC`,
+      ORDER BY c.created_at DESC
+      `,
       { replacements: { entry_id }, type: QueryTypes.SELECT }
     );
 
@@ -96,9 +98,11 @@ const addComment = async (req, res) => {
     }
 
     const [inserted] = await sequelize.query(
-      `INSERT INTO comments (${config.column}, user_id, text, created_at, updated_at)
-       VALUES (:entry_id, :user_id, :comment, NOW(), NOW())
-       RETURNING id, text, created_at`,
+      `
+      INSERT INTO comments (${config.column}, user_id, text, created_at, updated_at)
+      VALUES (:entry_id, :user_id, :comment, NOW(), NOW())
+      RETURNING id, text, created_at
+      `,
       {
         replacements: { entry_id, user_id, comment },
         type: QueryTypes.INSERT,
@@ -127,7 +131,7 @@ const deleteComment = async (req, res) => {
       { replacements: { comment_id: id }, type: QueryTypes.SELECT }
     );
 
-    if (!comment) return res.status(404).json({ error: "Кментар не знайдено." });
+    if (!comment) return res.status(404).json({ error: "Коментар не знайдено." });
     if (comment.user_id !== user_id)
       return res.status(403).json({ error: "Це не ваш коментар." });
 
