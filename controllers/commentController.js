@@ -32,8 +32,7 @@ const getCommentsByEntry = async (req, res) => {
 
   try {
     const comments = await sequelize.query(
-      `
-      SELECT 
+      `SELECT 
         c.id, 
         c.text,
         to_char(c.created_at, 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') AS "createdAt",
@@ -49,8 +48,7 @@ const getCommentsByEntry = async (req, res) => {
       FROM comments c
       LEFT JOIN users u ON c.user_id = u.id
       WHERE c.blog_id = :entry_id OR c.idea_id = :entry_id OR c.problem_id = :entry_id
-      ORDER BY c.created_at DESC
-      `,
+      ORDER BY c.created_at DESC`,
       { replacements: { entry_id }, type: QueryTypes.SELECT }
     );
 
@@ -61,30 +59,30 @@ const getCommentsByEntry = async (req, res) => {
   }
 };
 
+
 // ➕ Додати коментар
 const addComment = async (req, res) => {
   const { entry_id, entry_type, comment } = req.body;
-  const user_id = req.user?.id;
+  const user_id = req.user?.user_id;
 
   if (!entry_id || !entry_type || !comment || !user_id) {
     return res.status(400).json({
-      error: "Обов'язкові поля: entry_id, entry_type, comment, user_id.",
+      error: "Всі поля обов'язкові (entry_id, entry_type, comment, user_id).",
     });
   }
 
-  const types = {
+  const typeMap = {
     blog: { column: "blog_id", table: "blog" },
     idea: { column: "idea_id", table: "ideas" },
     problem: { column: "problem_id", table: "problems" },
   };
 
-  const config = types[entry_type];
+  const config = typeMap[entry_type];
   if (!config) {
     return res.status(400).json({ error: "Невідомий тип запису." });
   }
 
   try {
-    // Перевірка, чи запис існує
     const [exists] = await sequelize.query(
       `SELECT id FROM ${config.table} WHERE id = :entry_id`,
       {
@@ -98,16 +96,24 @@ const addComment = async (req, res) => {
     }
 
     const [inserted] = await sequelize.query(
-      `
-      INSERT INTO comments (${config.column}, user_id, text, created_at, updated_at)
-      VALUES (:entry_id, :user_id, :comment, NOW(), NOW())
-      RETURNING id, text, created_at
-      `,
+      `INSERT INTO comments (${config.column}, user_id, text, created_at, updated_at)
+       VALUES (:entry_id, :user_id, :comment, NOW(), NOW())
+       RETURNING id, text, created_at`,
       {
         replacements: { entry_id, user_id, comment },
         type: QueryTypes.INSERT,
       }
     );
+
+    getIO().emit("new_comment", {
+      entryId: entry_id,
+      entryType: entry_type,
+      comment: {
+        id: inserted[0].id,
+        text: inserted[0].text,
+        createdAt: inserted[0].created_at,
+      }
+    });
 
     res.status(201).json({ comment: inserted[0] });
   } catch (err) {
@@ -115,6 +121,7 @@ const addComment = async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 };
+
 
 // 🗑 Видалити коментар
 const deleteComment = async (req, res) => {

@@ -135,36 +135,32 @@ const addComment = async (req, res) => {
     });
   }
 
-  let column, table;
+  const typeMap = {
+    blog: { column: "blog_id", table: "blog" },
+    idea: { column: "idea_id", table: "ideas" },
+    problem: { column: "problem_id", table: "problems" },
+  };
 
-  if (entry_type === "blog") {
-    column = "blog_id";
-    table = "blog";
-  } else if (entry_type === "idea") {
-    column = "idea_id";
-    table = "ideas";
-  } else if (entry_type === "problem") {
-    column = "problem_id";
-    table = "problems";
-  } else {
+  const config = typeMap[entry_type];
+  if (!config) {
     return res.status(400).json({ error: "Невідомий тип запису." });
   }
 
   try {
-    const [check] = await sequelize.query(
-      `SELECT id FROM ${table} WHERE id = :entry_id`,
+    const [exists] = await sequelize.query(
+      `SELECT id FROM ${config.table} WHERE id = :entry_id`,
       {
         replacements: { entry_id },
         type: QueryTypes.SELECT,
       }
     );
 
-    if (!check) {
+    if (!exists) {
       return res.status(404).json({ error: `Запис ${entry_type} з ID ${entry_id} не знайдено.` });
     }
 
     const [inserted] = await sequelize.query(
-      `INSERT INTO comments (${column}, user_id, text, created_at, updated_at)
+      `INSERT INTO comments (${config.column}, user_id, text, created_at, updated_at)
        VALUES (:entry_id, :user_id, :comment, NOW(), NOW())
        RETURNING id, text, created_at`,
       {
@@ -175,13 +171,11 @@ const addComment = async (req, res) => {
 
     getIO().emit("new_comment", {
       entryId: entry_id,
+      entryType: entry_type,
       comment: {
         id: inserted[0].id,
         text: inserted[0].text,
         createdAt: inserted[0].created_at,
-        author_first_name: "Анонім", // Можна покращити при бажанні
-        author_last_name: "",
-        author_email: "",
       }
     });
 
