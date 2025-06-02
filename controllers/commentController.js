@@ -63,7 +63,7 @@ const getCommentsByEntry = async (req, res) => {
 // ➕ Додати коментар
 const addComment = async (req, res) => {
   const { entry_id, entry_type, comment } = req.body;
-  const user_id = req.user?.user_id;
+  const user_id = req.user?.id || req.user?.user_id;
 
   if (!entry_id || !entry_type || !comment || !user_id) {
     return res.status(400).json({
@@ -77,13 +77,13 @@ const addComment = async (req, res) => {
     problem: { column: "problem_id", table: "problems" },
   };
 
-  const config = typeMap[entry_type];
+  const config = typeMap[entry_type.toLowerCase()];
   if (!config) {
     return res.status(400).json({ error: "Невідомий тип запису." });
   }
 
   try {
-    const [exists] = await sequelize.query(
+    const [check] = await sequelize.query(
       `SELECT id FROM ${config.table} WHERE id = :entry_id`,
       {
         replacements: { entry_id },
@@ -91,7 +91,7 @@ const addComment = async (req, res) => {
       }
     );
 
-    if (!exists) {
+    if (!check) {
       return res.status(404).json({ error: `Запис ${entry_type} з ID ${entry_id} не знайдено.` });
     }
 
@@ -112,6 +112,9 @@ const addComment = async (req, res) => {
         id: inserted[0].id,
         text: inserted[0].text,
         createdAt: inserted[0].created_at,
+        author_first_name: "Анонім",
+        author_last_name: "",
+        author_email: "",
       }
     });
 
