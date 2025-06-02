@@ -1,6 +1,7 @@
 const sequelize = require("../config/database");
 const { QueryTypes } = require("sequelize");
 const jwt = require("jsonwebtoken");
+const { getIO } = require("../socket");
 
 const JWT_SECRET = process.env.JWT_SECRET || "your_secret_key";
 
@@ -35,19 +36,23 @@ const getCommentsByEntry = async (req, res) => {
       `SELECT 
         c.id, 
         c.text,
-        to_char(c.created_at, 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') AS "createdAt",
+        c.created_at AS "createdAt",
         u.id AS authorId,
         u.first_name AS author_first_name,
         u.last_name AS author_last_name,
         u.email AS author_email,
         CASE 
-          WHEN c.blog_id = :entry_id THEN 'blog'
-          WHEN c.idea_id = :entry_id THEN 'idea'
-          WHEN c.problem_id = :entry_id THEN 'problem'
+          WHEN b.id IS NOT NULL THEN 'blog'
+          WHEN i.id IS NOT NULL THEN 'idea'
+          WHEN p.id IS NOT NULL THEN 'problem'
+          ELSE 'unknown'
         END AS entry_type
       FROM comments c
       LEFT JOIN users u ON c.user_id = u.id
-      WHERE c.blog_id = :entry_id OR c.idea_id = :entry_id OR c.problem_id = :entry_id
+      LEFT JOIN blog b ON c.post_id = b.id
+      LEFT JOIN ideas i ON c.post_id = i.id
+      LEFT JOIN problems p ON c.post_id = p.id
+      WHERE c.post_id = :entry_id
       ORDER BY c.created_at DESC`,
       { replacements: { entry_id }, type: QueryTypes.SELECT }
     );
@@ -58,7 +63,6 @@ const getCommentsByEntry = async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 };
-
 
 // ➕ Додати коментар
 const addComment = async (req, res) => {
@@ -124,8 +128,6 @@ const addComment = async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 };
-
-
 
 // 🗑 Видалити коментар
 const deleteComment = async (req, res) => {

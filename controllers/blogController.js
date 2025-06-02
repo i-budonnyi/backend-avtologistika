@@ -24,32 +24,28 @@ const authenticateUser = (req, res, next) => {
   }
 };
 
-// 📥 Отримати всі записи (блоги, ідеї)
+// 📅 Отримати всі записи (blog, idea)
 const getAllEntries = async (req, res) => {
   try {
-    const blogs = await sequelize.query(
-      `SELECT b.id, b.title, b.description, b.user_id AS authorId,
-              COALESCE(u.first_name, 'Невідомий') AS author_first_name,
-              COALESCE(u.last_name, '') AS author_last_name,
-              u.email AS author_email,
-              b.created_at AS createdAt
-       FROM blog b
-       LEFT JOIN users u ON b.user_id = u.id
-       ORDER BY b.created_at DESC`,
-      { type: QueryTypes.SELECT }
-    );
+    const blogs = await sequelize.query(`SELECT b.id, b.title, b.description, b.user_id AS authorId,
+      COALESCE(u.first_name, 'Невідомий') AS author_first_name,
+      COALESCE(u.last_name, '') AS author_last_name,
+      u.email AS author_email,
+      b.created_at AS createdAt
+      FROM blog b
+      LEFT JOIN users u ON b.user_id = u.id
+      ORDER BY b.created_at DESC`,
+      { type: QueryTypes.SELECT });
 
-    const ideas = await sequelize.query(
-      `SELECT i.id, i.title, i.description, i.user_id AS authorId,
-              COALESCE(u.first_name, 'Невідомий') AS author_first_name,
-              COALESCE(u.last_name, '') AS author_last_name,
-              u.email AS author_email,
-              i.created_at AS createdAt
-       FROM ideas i
-       LEFT JOIN users u ON i.user_id = u.id
-       ORDER BY i.created_at DESC`,
-      { type: QueryTypes.SELECT }
-    );
+    const ideas = await sequelize.query(`SELECT i.id, i.title, i.description, i.user_id AS authorId,
+      COALESCE(u.first_name, 'Невідомий') AS author_first_name,
+      COALESCE(u.last_name, '') AS author_last_name,
+      u.email AS author_email,
+      i.created_at AS createdAt
+      FROM ideas i
+      LEFT JOIN users u ON i.user_id = u.id
+      ORDER BY i.created_at DESC`,
+      { type: QueryTypes.SELECT });
 
     res.status(200).json({ blogs, ideas });
   } catch (error) {
@@ -130,9 +126,7 @@ const addComment = async (req, res) => {
   const user_id = req.user?.id || req.user?.user_id;
 
   if (!entry_id || !entry_type || !comment || !user_id) {
-    return res.status(400).json({
-      error: "Всі поля обов'язкові (entry_id, entry_type, comment, user_id).",
-    });
+    return res.status(400).json({ error: "Всі поля обов'язкові." });
   }
 
   const tableMap = {
@@ -188,7 +182,8 @@ const addComment = async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 };
-// 📥 Отримати всі коментарі до запису
+
+// 📅 Отримати коментарі до запису
 const getCommentsByEntry = async (req, res) => {
   const { entry_id } = req.params;
   if (!entry_id) {
@@ -230,6 +225,7 @@ const getCommentsByEntry = async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 };
+
 // 📤 Експорт
 module.exports = {
   authenticateUser,
@@ -237,6 +233,5 @@ module.exports = {
   createBlogEntry,
   deleteBlogEntry,
   addComment,
-  getCommentsByEntry, // 👈 додано
+  getCommentsByEntry,
 };
-
