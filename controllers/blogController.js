@@ -135,20 +135,20 @@ const addComment = async (req, res) => {
     });
   }
 
-  const typeMap = {
-    blog: { column: "blog_id", table: "blog" },
-    idea: { column: "idea_id", table: "ideas" },
-    problem: { column: "problem_id", table: "problems" },
+  const tableMap = {
+    blog: "blog",
+    idea: "ideas",
+    problem: "problems"
   };
 
-  const config = typeMap[entry_type.toLowerCase()];
-  if (!config) {
+  const targetTable = tableMap[entry_type.toLowerCase()];
+  if (!targetTable) {
     return res.status(400).json({ error: "Невідомий тип запису." });
   }
 
   try {
     const [check] = await sequelize.query(
-      `SELECT id FROM ${config.table} WHERE id = :entry_id`,
+      `SELECT id FROM ${targetTable} WHERE id = :entry_id`,
       {
         replacements: { entry_id },
         type: QueryTypes.SELECT,
@@ -160,7 +160,7 @@ const addComment = async (req, res) => {
     }
 
     const [inserted] = await sequelize.query(
-      `INSERT INTO comments (${config.column}, user_id, text, created_at, updated_at)
+      `INSERT INTO comments (post_id, user_id, text, created_at, updated_at)
        VALUES (:entry_id, :user_id, :comment, NOW(), NOW())
        RETURNING id, text, created_at`,
       {
@@ -188,8 +188,48 @@ const addComment = async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 };
+// 📥 Отримати всі коментарі до запису
+const getCommentsByEntry = async (req, res) => {
+  const { entry_id } = req.params;
+  if (!entry_id) {
+    return res.status(400).json({ error: "Не вказано entry_id." });
+  }
 
+  try {
+    const comments = await sequelize.query(
+      `SELECT 
+        c.id,
+        c.text,
+        c.created_at AS "createdAt",
+        u.id AS authorId,
+        u.first_name AS author_first_name,
+        u.last_name AS author_last_name,
+        u.email AS author_email,
+        CASE 
+          WHEN b.id IS NOT NULL THEN 'blog'
+          WHEN i.id IS NOT NULL THEN 'idea'
+          WHEN p.id IS NOT NULL THEN 'problem'
+          ELSE 'unknown'
+        END AS entry_type
+      FROM comments c
+      LEFT JOIN users u ON c.user_id = u.id
+      LEFT JOIN blog b ON c.post_id = b.id
+      LEFT JOIN ideas i ON c.post_id = i.id
+      LEFT JOIN problems p ON c.post_id = p.id
+      WHERE c.post_id = :entry_id
+      ORDER BY c.created_at ASC`,
+      {
+        replacements: { entry_id },
+        type: QueryTypes.SELECT,
+      }
+    );
 
+    res.status(200).json({ comments });
+  } catch (err) {
+    console.error("[getCommentsByEntry] ❌", err.message);
+    res.status(500).json({ error: err.message });
+  }
+};
 // 📤 Експорт
 module.exports = {
   authenticateUser,
@@ -197,4 +237,6 @@ module.exports = {
   createBlogEntry,
   deleteBlogEntry,
   addComment,
+  getCommentsByEntry, // 👈 додано
 };
+

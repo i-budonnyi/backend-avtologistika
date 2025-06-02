@@ -71,20 +71,20 @@ const addComment = async (req, res) => {
     });
   }
 
-  const typeMap = {
-    blog: { column: "blog_id", table: "blog" },
-    idea: { column: "idea_id", table: "ideas" },
-    problem: { column: "problem_id", table: "problems" },
+  const tableMap = {
+    blog: "blog",
+    idea: "ideas",
+    problem: "problems"
   };
 
-  const config = typeMap[entry_type.toLowerCase()];
-  if (!config) {
+  const targetTable = tableMap[entry_type.toLowerCase()];
+  if (!targetTable) {
     return res.status(400).json({ error: "Невідомий тип запису." });
   }
 
   try {
     const [check] = await sequelize.query(
-      `SELECT id FROM ${config.table} WHERE id = :entry_id`,
+      `SELECT id FROM ${targetTable} WHERE id = :entry_id`,
       {
         replacements: { entry_id },
         type: QueryTypes.SELECT,
@@ -96,7 +96,7 @@ const addComment = async (req, res) => {
     }
 
     const [inserted] = await sequelize.query(
-      `INSERT INTO comments (${config.column}, user_id, text, created_at, updated_at)
+      `INSERT INTO comments (post_id, user_id, text, created_at, updated_at)
        VALUES (:entry_id, :user_id, :comment, NOW(), NOW())
        RETURNING id, text, created_at`,
       {
@@ -124,6 +124,7 @@ const addComment = async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 };
+
 
 
 // 🗑 Видалити коментар
