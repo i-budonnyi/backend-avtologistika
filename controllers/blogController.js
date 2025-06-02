@@ -123,7 +123,7 @@ const deleteBlogEntry = async (req, res) => {
 // 💬 Додати коментар
 const addComment = async (req, res) => {
   const { entry_id, entry_type, comment } = req.body;
-  const user_id = req.user?.id || req.user?.user_id;
+  const user_id = req.user?.user_id;
 
   if (!entry_id || !entry_type || !comment || !user_id) {
     return res.status(400).json({ error: "Всі поля обов'язкові." });
@@ -163,25 +163,40 @@ const addComment = async (req, res) => {
       }
     );
 
-    getIO().emit("new_comment", {
+    const [userInfo] = await sequelize.query(
+      `SELECT first_name, last_name, email FROM users WHERE id = :user_id`,
+      {
+        replacements: { user_id },
+        type: QueryTypes.SELECT,
+      }
+    );
+
+    const io = getIO();
+    io.emit("new_comment", {
       entryId: entry_id,
       entryType: entry_type,
       comment: {
         id: inserted[0].id,
         text: inserted[0].text,
         createdAt: inserted[0].created_at,
-        author_first_name: "Анонім",
-        author_last_name: "",
-        author_email: "",
+        author_first_name: userInfo?.first_name || "",
+        author_last_name: userInfo?.last_name || "",
+        author_email: userInfo?.email || "",
       }
     });
 
-    res.status(201).json({ comment: inserted[0] });
-  } catch (err) {
-    console.error("[addComment] ❌", err.message);
-    res.status(500).json({ error: err.message });
+  res.status(201).json({
+  comment: {
+    id: inserted[0].id,
+    comment: inserted[0].text,
+    createdAt: inserted[0].created_at,
+    author_first_name: userInfo?.first_name || "",
+    author_last_name: userInfo?.last_name || "",
+    author_email: userInfo?.email || "",
+    user_id
   }
-};
+});
+
 
 // 📅 Отримати коментарі до запису
 const getCommentsByEntry = async (req, res) => {
