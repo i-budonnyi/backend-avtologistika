@@ -121,6 +121,7 @@ const deleteBlogEntry = async (req, res) => {
 };
 
 // 💬 Додати коментар
+// 💬 Додати коментар
 const addComment = async (req, res) => {
   const { entry_id, entry_type, comment } = req.body;
   const user_id = req.user?.user_id;
@@ -185,17 +186,23 @@ const addComment = async (req, res) => {
       }
     });
 
-  res.status(201).json({
-  comment: {
-    id: inserted[0].id,
-    comment: inserted[0].text,
-    createdAt: inserted[0].created_at,
-    author_first_name: userInfo?.first_name || "",
-    author_last_name: userInfo?.last_name || "",
-    author_email: userInfo?.email || "",
-    user_id
+    res.status(201).json({
+      comment: {
+        id: inserted[0].id,
+        comment: inserted[0].text,
+        createdAt: inserted[0].created_at,
+        author_first_name: userInfo?.first_name || "",
+        author_last_name: userInfo?.last_name || "",
+        author_email: userInfo?.email || "",
+        user_id
+      }
+    });
+
+  } catch (error) {
+    console.error("[addComment] ❌", error.message);
+    res.status(500).json({ error: error.message });
   }
-});
+};
 
 
 // 📅 Отримати коментарі до запису
