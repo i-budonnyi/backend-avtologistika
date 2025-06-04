@@ -37,7 +37,7 @@ const getCommentsByEntry = async (req, res) => {
         c.id, 
         c.text,
         c.created_at AS "createdAt",
-        u.id AS authorId,
+        u.id AS user_id,
         u.first_name AS author_first_name,
         u.last_name AS author_last_name,
         u.email AS author_email,
@@ -67,7 +67,7 @@ const getCommentsByEntry = async (req, res) => {
 // ➕ Додати коментар
 const addComment = async (req, res) => {
   const { entry_id, entry_type, comment } = req.body;
-  const user_id = req.user?.id || req.user?.user_id;
+  const user_id = req.user?.id;
 
   if (!entry_id || !entry_type || !comment || !user_id) {
     return res.status(400).json({
@@ -89,10 +89,7 @@ const addComment = async (req, res) => {
   try {
     const [check] = await sequelize.query(
       `SELECT id FROM ${targetTable} WHERE id = :entry_id`,
-      {
-        replacements: { entry_id },
-        type: QueryTypes.SELECT,
-      }
+      { replacements: { entry_id }, type: QueryTypes.SELECT }
     );
 
     if (!check) {
@@ -109,23 +106,30 @@ const addComment = async (req, res) => {
       }
     );
 
+    const [author] = await sequelize.query(
+      `SELECT first_name, last_name, email FROM users WHERE id = :user_id`,
+      { replacements: { user_id }, type: QueryTypes.SELECT }
+    );
+
+    const fullComment = {
+      id: inserted.id,
+      comment: inserted.text,
+      createdAt: inserted.created_at,
+      user_id,
+      author_first_name: author?.first_name || "Анонім",
+      author_last_name: author?.last_name || "",
+      author_email: author?.email || "",
+    };
+
     getIO().emit("new_comment", {
-      entryId: entry_id,
-      entryType: entry_type,
-      comment: {
-        id: inserted[0].id,
-        text: inserted[0].text,
-        createdAt: inserted[0].created_at,
-        author_first_name: "Анонім",
-        author_last_name: "",
-        author_email: "",
-      }
+      entry_id,
+      comment: fullComment
     });
 
-    res.status(201).json({ comment: inserted[0] });
+    res.status(201).json({ comment: fullComment });
   } catch (err) {
     console.error("[addComment] ❌", err.message);
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: "Помилка при додаванні коментаря: " + err.message });
   }
 };
 
