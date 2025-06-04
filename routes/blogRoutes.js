@@ -3,48 +3,45 @@ const router = express.Router();
 const path = require("path");
 const fs = require("fs");
 
-// 🔹 Динамічно визначаємо правильний шлях до `blogController.js`
+// 📁 Очікуваний шлях до blogController
 const controllerPath = path.join(__dirname, "../controllers/blogController");
 
-// ❌ Перевіряємо, чи існує `blogController.js`
+// ❗ Перевіряємо існування контролера
 if (!fs.existsSync(controllerPath + ".js")) {
-    console.error("\n❌ [ERROR] Файл blogController.js не знайдено!");
-    console.error(`   📂 Очікуваний шлях: ${controllerPath}.js`);
-    process.exit(1);
+  console.error("\n❌ [ERROR] Файл blogController.js не знайдено!");
+  console.error(`   📂 Очікуваний шлях: ${controllerPath}.js`);
+  process.exit(1);
 }
 
-// ✅ Імпортуємо `blogController.js`
+// ✅ Імпортуємо контролер
 const blogController = require(controllerPath);
 
-// 🔍 Логування для перевірки імпорту
-console.log("\n[ROUTES] 🔍 Перевірка імпорту blogController:", blogController);
-
-// ✅ Отримуємо контролери
+// 🧩 Витягуємо функції
 const {
-    authenticateUser,
-    getAllEntries,
-    createBlogEntry,
-    deleteBlogEntry
+  authenticateUser,
+  getAllEntries,
+  createBlogEntry,
+  deleteBlogEntry
 } = blogController;
 
-// ❌ Якщо якась функція `undefined`, зупиняємо сервер
+// ❌ Якщо якась функція відсутня — лог + вихід
 if (
-    typeof authenticateUser !== "function" ||
-    typeof getAllEntries !== "function" ||
-    typeof createBlogEntry !== "function" ||
-    typeof deleteBlogEntry !== "function"
+  typeof authenticateUser !== "function" ||
+  typeof getAllEntries !== "function" ||
+  typeof createBlogEntry !== "function" ||
+  typeof deleteBlogEntry !== "function"
 ) {
-    console.error("\n❌ [ERROR] Неможливо підключити маршрут blogRoutes.js:");
-    console.error("   Один або більше контролерів `undefined`!");
-    console.error(`   📂 Шлях до контролера: ${controllerPath}.js`);
-    process.exit(1);
+  console.error("\n❌ [ERROR] Неможливо підключити маршрут blogRoutes.js:");
+  console.error("   Один або більше контролерів `undefined`!");
+  console.error(`   📂 Шлях до контролера: ${controllerPath}.js`);
+  process.exit(1);
 }
 
-// 🔥 Підключаємо маршрути
+// ✅ Маршрути
 router.get("/entries", authenticateUser, getAllEntries);
 router.post("/create", authenticateUser, createBlogEntry);
 router.delete("/delete/:entryId", authenticateUser, deleteBlogEntry);
 
-console.log("\n✅ [ROUTES] Маршрути blogRoutes.js успішно підключені!\n");
+console.log("✅ [ROUTES] blogRoutes.js підключено успішно");
 
 module.exports = router;

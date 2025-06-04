@@ -66,10 +66,15 @@ const getCommentsByEntry = async (req, res) => {
 
 // ➕ Додати коментар
 const addComment = async (req, res) => {
+  console.log("🟡 [addComment] Вхідний запит:");
+  console.log("➡️ req.body:", req.body);
+  console.log("➡️ req.user:", req.user);
+
   const { entry_id, entry_type, comment } = req.body;
   const user_id = req.user?.id;
 
   if (!entry_id || !entry_type || !comment || !user_id) {
+    console.warn("⚠️ Недостатньо полів:", { entry_id, entry_type, comment, user_id });
     return res.status(400).json({
       error: "Всі поля обов'язкові (entry_id, entry_type, comment, user_id).",
     });
@@ -83,20 +88,24 @@ const addComment = async (req, res) => {
 
   const targetTable = tableMap[entry_type.toLowerCase()];
   if (!targetTable) {
+    console.warn("⚠️ Невідомий тип запису:", entry_type);
     return res.status(400).json({ error: "Невідомий тип запису." });
   }
 
   try {
+    console.log("🔎 Перевірка наявності запису у таблиці:", targetTable);
     const [check] = await sequelize.query(
       `SELECT id FROM ${targetTable} WHERE id = :entry_id`,
       { replacements: { entry_id }, type: QueryTypes.SELECT }
     );
 
     if (!check) {
+      console.warn(`❌ Запис не знайдено: ${entry_type} → ID ${entry_id}`);
       return res.status(404).json({ error: `Запис ${entry_type} з ID ${entry_id} не знайдено.` });
     }
 
-    const [inserted] = await sequelize.query(
+    console.log("✅ Запис знайдено. Додаємо коментар...");
+    const [[inserted]] = await sequelize.query(
       `INSERT INTO comments (post_id, user_id, text, created_at, updated_at)
        VALUES (:entry_id, :user_id, :comment, NOW(), NOW())
        RETURNING id, text, created_at`,
@@ -106,10 +115,14 @@ const addComment = async (req, res) => {
       }
     );
 
+    console.log("✅ Коментар збережено:", inserted);
+
     const [author] = await sequelize.query(
       `SELECT first_name, last_name, email FROM users WHERE id = :user_id`,
       { replacements: { user_id }, type: QueryTypes.SELECT }
     );
+
+    console.log("👤 Автор коментаря:", author);
 
     const fullComment = {
       id: inserted.id,
@@ -121,14 +134,17 @@ const addComment = async (req, res) => {
       author_email: author?.email || "",
     };
 
+    console.log("📢 Надсилаємо коментар через WebSocket...");
     getIO().emit("new_comment", {
       entry_id,
       comment: fullComment
     });
 
+    console.log("✅ Коментар успішно повертається у відповідь.");
     res.status(201).json({ comment: fullComment });
   } catch (err) {
-    console.error("[addComment] ❌", err.message);
+    console.error("🔥 [addComment] Виникла помилка:");
+    console.error(err.stack || err.message || err);
     res.status(500).json({ error: "Помилка при додаванні коментаря: " + err.message });
   }
 };

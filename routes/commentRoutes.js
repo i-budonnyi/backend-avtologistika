@@ -7,8 +7,16 @@ const {
   deleteComment
 } = require("../controllers/commentController");
 
+// 🔎 Отримати коментарі до одного запису
 router.get("/:entry_id", getCommentsByEntry);
-router.post("/add", authenticateUser, addComment);
+
+// ➕ Додати коментар (авторизація обов’язкова)
+router.post("/add", authenticateUser, (req, res, next) => {
+  console.log("✅ POST /add викликано, тіло:", req.body);
+  next();
+}, addComment);
+
+// 🗑 Видалити коментар (авторизація обов’язкова)
 router.delete("/:id", authenticateUser, deleteComment);
 
 module.exports = router;
