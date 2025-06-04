@@ -154,7 +154,7 @@ const addComment = async (req, res) => {
       return res.status(404).json({ error: `Запис ${entry_type} з ID ${entry_id} не знайдено.` });
     }
 
-    const [inserted] = await sequelize.query(
+    const [[inserted]] = await sequelize.query(
       `INSERT INTO comments (post_id, user_id, text, created_at, updated_at)
        VALUES (:entry_id, :user_id, :comment, NOW(), NOW())
        RETURNING id, text, created_at`,
@@ -174,23 +174,23 @@ const addComment = async (req, res) => {
 
     const io = getIO();
     io.emit("new_comment", {
-      entryId: entry_id,
-      entryType: entry_type,
+      entry_id,
       comment: {
-        id: inserted[0].id,
-        text: inserted[0].text,
-        createdAt: inserted[0].created_at,
+        id: inserted.id,
+        text: inserted.text,
+        createdAt: inserted.created_at,
         author_first_name: userInfo?.first_name || "",
         author_last_name: userInfo?.last_name || "",
         author_email: userInfo?.email || "",
+        user_id
       }
     });
 
     res.status(201).json({
       comment: {
-        id: inserted[0].id,
-        comment: inserted[0].text,
-        createdAt: inserted[0].created_at,
+        id: inserted.id,
+        comment: inserted.text,
+        createdAt: inserted.created_at,
         author_first_name: userInfo?.first_name || "",
         author_last_name: userInfo?.last_name || "",
         author_email: userInfo?.email || "",
