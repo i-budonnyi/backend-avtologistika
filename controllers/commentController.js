@@ -15,10 +15,15 @@ const authenticateUser = (req, res, next) => {
   try {
     const token = authHeader.split(" ")[1];
     const decoded = jwt.verify(token, JWT_SECRET);
+
     const userId = decoded.id || decoded.user_id;
+    const email = decoded.email || null;
+    const first_name = decoded.first_name || "";
+    const last_name = decoded.last_name || "";
+
     if (!userId) throw new Error("ID користувача не знайдено в токені");
 
-    req.user = { id: userId };
+    req.user = { id: userId, email, first_name, last_name };
     next();
   } catch (err) {
     console.error("[AUTH] ❌", err.message);
@@ -26,7 +31,7 @@ const authenticateUser = (req, res, next) => {
   }
 };
 
-// 📥 Отримати всі коментарі для запису
+// 📥 Отримати всі коментарі
 const getCommentsByEntry = async (req, res) => {
   const { entry_id } = req.params;
   if (!entry_id) return res.status(400).json({ error: "Не вказано entry_id." });
@@ -64,17 +69,14 @@ const getCommentsByEntry = async (req, res) => {
   }
 };
 
-// ➕ Додати коментар
+// ➕ Додати коментар (з автоматичним додаванням користувача)
 const addComment = async (req, res) => {
-  console.log("🟡 [addComment] Вхідний запит:");
-  console.log("➡️ req.body:", req.body);
-  console.log("➡️ req.user:", req.user);
-
   const { entry_id, entry_type, comment } = req.body;
-  const user_id = req.user?.id;
+  const { id: user_id, email, first_name, last_name } = req.user;
+
+  console.log("🟡 [addComment] Вхідні дані:", { entry_id, entry_type, comment, user_id });
 
   if (!entry_id || !entry_type || !comment || !user_id) {
-    console.warn("⚠️ Недостатньо полів:", { entry_id, entry_type, comment, user_id });
     return res.status(400).json({
       error: "Всі поля обов'язкові (entry_id, entry_type, comment, user_id).",
     });
@@ -83,28 +85,44 @@ const addComment = async (req, res) => {
   const tableMap = {
     blog: "blog",
     idea: "ideas",
-    problem: "problems"
+    problem: "problems",
   };
 
   const targetTable = tableMap[entry_type.toLowerCase()];
   if (!targetTable) {
-    console.warn("⚠️ Невідомий тип запису:", entry_type);
     return res.status(400).json({ error: "Невідомий тип запису." });
   }
 
   try {
-    console.log("🔎 Перевірка наявності запису у таблиці:", targetTable);
+    // 🔎 Перевірка наявності запису (blog/idea/problem)
     const [check] = await sequelize.query(
       `SELECT id FROM ${targetTable} WHERE id = :entry_id`,
       { replacements: { entry_id }, type: QueryTypes.SELECT }
     );
 
     if (!check) {
-      console.warn(`❌ Запис не знайдено: ${entry_type} → ID ${entry_id}`);
       return res.status(404).json({ error: `Запис ${entry_type} з ID ${entry_id} не знайдено.` });
     }
 
-    console.log("✅ Запис знайдено. Додаємо коментар...");
+    // 🔎 Перевірка, чи існує користувач
+    const [userExists] = await sequelize.query(
+      `SELECT id FROM users WHERE id = :user_id`,
+      { replacements: { user_id }, type: QueryTypes.SELECT }
+    );
+
+    if (!userExists) {
+      console.warn("⚠️ Користувач не існує — створюємо:", user_id);
+      await sequelize.query(
+        `INSERT INTO users (id, email, first_name, last_name)
+         VALUES (:user_id, :email, :first_name, :last_name)`,
+        {
+          replacements: { user_id, email, first_name, last_name },
+          type: QueryTypes.INSERT
+        }
+      );
+    }
+
+    // 💬 Додаємо коментар
     const [[inserted]] = await sequelize.query(
       `INSERT INTO comments (post_id, user_id, text, created_at, updated_at)
        VALUES (:entry_id, :user_id, :comment, NOW(), NOW())
@@ -115,36 +133,25 @@ const addComment = async (req, res) => {
       }
     );
 
-    console.log("✅ Коментар збережено:", inserted);
-
-    const [author] = await sequelize.query(
-      `SELECT first_name, last_name, email FROM users WHERE id = :user_id`,
-      { replacements: { user_id }, type: QueryTypes.SELECT }
-    );
-
-    console.log("👤 Автор коментаря:", author);
-
     const fullComment = {
       id: inserted.id,
       comment: inserted.text,
       createdAt: inserted.created_at,
       user_id,
-      author_first_name: author?.first_name || "Анонім",
-      author_last_name: author?.last_name || "",
-      author_email: author?.email || "",
+      author_first_name: first_name || "Анонім",
+      author_last_name: last_name || "",
+      author_email: email || "",
     };
 
-    console.log("📢 Надсилаємо коментар через WebSocket...");
+    // 📡 Надсилання WebSocket
     getIO().emit("new_comment", {
       entry_id,
       comment: fullComment
     });
 
-    console.log("✅ Коментар успішно повертається у відповідь.");
     res.status(201).json({ comment: fullComment });
   } catch (err) {
-    console.error("🔥 [addComment] Виникла помилка:");
-    console.error(err.stack || err.message || err);
+    console.error("🔥 [addComment] Помилка:", err.stack || err.message || err);
     res.status(500).json({ error: "Помилка при додаванні коментаря: " + err.message });
   }
 };
