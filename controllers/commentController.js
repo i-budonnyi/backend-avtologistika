@@ -15,7 +15,6 @@ const authenticateUser = (req, res, next) => {
   try {
     const token = authHeader.split(" ")[1];
     const decoded = jwt.verify(token, JWT_SECRET);
-
     const userId = decoded.id || decoded.user_id;
     const email = decoded.email || null;
     const first_name = decoded.first_name || "";
