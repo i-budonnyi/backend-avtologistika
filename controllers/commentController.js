@@ -1,7 +1,7 @@
 const sequelize = require("../config/database");
 const { QueryTypes } = require("sequelize");
 const jwt = require("jsonwebtoken");
-const { getIO } = require("../socket");
+const { getIO, sendNotification } = require("../socket");
 
 const JWT_SECRET = process.env.JWT_SECRET || "your_secret_key";
 
@@ -156,6 +156,12 @@ const addComment = async (req, res) => {
       }
     } catch (e) {
       console.warn("⚠️ Socket не ініціалізовано:", e.message);
+    }
+
+    try {
+      sendNotification(user_id, `💬 Коментар додано: "${comment.slice(0, 50)}..."`);
+    } catch (e) {
+      console.warn("⚠️ sendNotification не спрацював:", e.message);
     }
 
     return res.status(201).json({ comment: fullComment });
