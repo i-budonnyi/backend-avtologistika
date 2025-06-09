@@ -48,18 +48,28 @@ io.on("connection", (socket) => {
 
 // 🔔 Функція для надсилання сповіщень
 const sendNotification = (userId, message) => {
-  const socket = clients.get(userId);
-  if (socket) {
-    socket.emit("notification", { message });
-    console.log(`📤 Надіслано сповіщення користувачу ${userId}: ${message}`);
-  } else {
-    console.log(`⚠️ Користувач ${userId} не підключений до WebSocket`);
+  try {
+    if (!userId || !message) {
+      console.warn("⚠️ sendNotification: відсутній userId або message");
+      return;
+    }
+
+    const socket = clients.get(userId);
+    if (socket) {
+      socket.emit("notification", {
+        message,
+        is_read: false,
+        timestamp: new Date().toISOString(),
+      });
+      console.log(`📤 Надіслано сповіщення користувачу ${userId}: ${message}`);
+    } else {
+      console.log(`⚠️ Користувач ${userId} не підключений до WebSocket`);
+    }
+  } catch (err) {
+    console.error("❌ [sendNotification] Помилка:", err.message);
   }
 };
 
-// 🌐 Експортуємо, якщо потрібно використовувати в інших файлах
-module.exports.io = io;
-module.exports.sendNotification = sendNotification;
 
 // ✅ CORS
 app.use(cors({
