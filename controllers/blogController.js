@@ -142,28 +142,40 @@ const addComment = async (req, res) => {
   }
 
   try {
+    // Перевірка чи існує запис
     const [check] = await sequelize.query(
       `SELECT id FROM ${targetTable} WHERE id = :entry_id`,
-      {
-        replacements: { entry_id },
-        type: QueryTypes.SELECT,
-      }
+      { replacements: { entry_id }, type: QueryTypes.SELECT }
     );
 
     if (!check) {
       return res.status(404).json({ error: `Запис ${entry_type} з ID ${entry_id} не знайдено.` });
     }
 
-    const [[inserted]] = await sequelize.query(
+    // Додати коментар
+    await sequelize.query(
       `INSERT INTO comments (post_id, user_id, text, created_at, updated_at)
-       VALUES (:entry_id, :user_id, :comment, NOW(), NOW())
-       RETURNING id, text, created_at`,
+       VALUES (:entry_id, :user_id, :comment, NOW(), NOW())`,
       {
         replacements: { entry_id, user_id, comment },
         type: QueryTypes.INSERT,
       }
     );
 
+    // Отримати останній коментар
+    const [newComment] = await sequelize.query(
+      `SELECT id, text AS comment, created_at AS "createdAt"
+       FROM comments
+       WHERE post_id = :entry_id AND user_id = :user_id
+       ORDER BY created_at DESC
+       LIMIT 1`,
+      {
+        replacements: { entry_id, user_id },
+        type: QueryTypes.SELECT,
+      }
+    );
+
+    // Отримати дані автора
     const [userInfo] = await sequelize.query(
       `SELECT first_name, last_name, email FROM users WHERE id = :user_id`,
       {
@@ -172,37 +184,28 @@ const addComment = async (req, res) => {
       }
     );
 
-    const io = getIO();
-    io.emit("new_comment", {
+    const fullComment = {
+      id: newComment.id,
+      comment: newComment.comment,
+      createdAt: newComment.createdAt,
+      author_first_name: userInfo?.first_name || "",
+      author_last_name: userInfo?.last_name || "",
+      author_email: userInfo?.email || "",
+      user_id,
+    };
+
+    getIO().emit("new_comment", {
       entry_id,
-      comment: {
-        id: inserted.id,
-        text: inserted.text,
-        createdAt: inserted.created_at,
-        author_first_name: userInfo?.first_name || "",
-        author_last_name: userInfo?.last_name || "",
-        author_email: userInfo?.email || "",
-        user_id
-      }
+      comment: fullComment,
     });
 
-    res.status(201).json({
-      comment: {
-        id: inserted.id,
-        comment: inserted.text,
-        createdAt: inserted.created_at,
-        author_first_name: userInfo?.first_name || "",
-        author_last_name: userInfo?.last_name || "",
-        author_email: userInfo?.email || "",
-        user_id
-      }
-    });
-
+    res.status(201).json({ comment: fullComment });
   } catch (error) {
-    console.error("[addComment] ❌", error.message);
+    console.error("[addComment] ❌", error.stack || error.message);
     res.status(500).json({ error: error.message });
   }
 };
+
 
 
 // 📅 Отримати коментарі до запису
