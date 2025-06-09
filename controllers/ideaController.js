@@ -7,7 +7,8 @@ const getAllIdeas = async (req, res) => {
     const ideas = await sequelize.query(`
       SELECT i.*, 
              u.first_name AS author_first_name, 
-             u.last_name AS author_last_name
+             u.last_name AS author_last_name,
+             u.email AS author_email
       FROM ideas i
       LEFT JOIN users u ON i.user_id = u.id
       ORDER BY i.created_at DESC
@@ -47,7 +48,7 @@ const getIdeasByAmbassador = async (req, res) => {
     }
 
     const ideas = await sequelize.query(
-      `SELECT i.*, u.first_name AS author_first_name, u.last_name AS author_last_name
+      `SELECT i.*, u.first_name AS author_first_name, u.last_name AS author_last_name, u.email AS author_email
        FROM ideas i
        LEFT JOIN users u ON i.user_id = u.id
        WHERE i.ambassador_id = :ambassadorId
@@ -74,7 +75,8 @@ const addCommentToIdea = async (req, res) => {
     }
 
     await sequelize.query(
-      `INSERT INTO comments (idea_id, user_id, comment_text) VALUES (:id, :userId, :comment)`,
+      `INSERT INTO comments (post_id, user_id, text, created_at, updated_at)
+       VALUES (:id, :userId, :comment, NOW(), NOW())`,
       { replacements: { id, userId, comment }, type: QueryTypes.INSERT }
     );
 
@@ -92,8 +94,8 @@ const createIdea = async (req, res) => {
     const user_id = req.user?.id;
 
     await sequelize.query(
-      `INSERT INTO ideas (user_id, ambassador_id, title, description, status)
-       VALUES (:user_id, :ambassador_id, :title, :description, 'pending')`,
+      `INSERT INTO ideas (user_id, ambassador_id, title, description, status, created_at, updated_at)
+       VALUES (:user_id, :ambassador_id, :title, :description, 'pending', NOW(), NOW())`,
       { replacements: { user_id, ambassador_id, title, description }, type: QueryTypes.INSERT }
     );
 
@@ -115,7 +117,7 @@ const updateIdeaStatus = async (req, res) => {
     }
 
     await sequelize.query(
-      `UPDATE ideas SET status = :status WHERE id = :id`,
+      `UPDATE ideas SET status = :status, updated_at = NOW() WHERE id = :id`,
       { replacements: { status, id }, type: QueryTypes.UPDATE }
     );
 
