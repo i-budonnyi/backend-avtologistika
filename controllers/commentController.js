@@ -68,8 +68,6 @@ const getCommentsByEntry = async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 };
-
-// ➕ Додати коментар
 const addComment = async (req, res) => {
   const { entry_id, entry_type, comment } = req.body;
   const { id: user_id, email, first_name, last_name } = req.user;
@@ -118,6 +116,57 @@ const addComment = async (req, res) => {
         }
       );
     }
+
+    // 💬 Додаємо коментар
+    await sequelize.query(
+      `INSERT INTO comments (post_id, user_id, text, created_at, updated_at)
+       VALUES (:entry_id, :user_id, :comment, NOW(), NOW())`,
+      {
+        replacements: { entry_id, user_id, comment },
+        type: QueryTypes.INSERT
+      }
+    );
+
+    // Отримати тільки-що створений коментар
+    const [newComment] = await sequelize.query(
+      `SELECT id, text AS comment, created_at AS "createdAt"
+       FROM comments
+       WHERE post_id = :entry_id AND user_id = :user_id
+       ORDER BY created_at DESC
+       LIMIT 1`,
+      {
+        replacements: { entry_id, user_id },
+        type: QueryTypes.SELECT
+      }
+    );
+
+    const fullComment = {
+      ...newComment,
+      user_id,
+      author_first_name: first_name || "Анонім",
+      author_last_name: last_name || "",
+      author_email: email || "",
+    };
+
+    // ✅ Безпечна перевірка getIO()
+    try {
+      const io = getIO();
+      if (io) {
+        io.emit("new_comment", {
+          entry_id,
+          comment: fullComment,
+        });
+      }
+    } catch (e) {
+      console.warn("⚠️ Socket не ініціалізовано, коментар збережено, але без WebSocket:", e.message);
+    }
+
+    return res.status(201).json({ comment: fullComment });
+  } catch (err) {
+    console.error("🔥 [addComment] Помилка:", err.stack || err.message || err);
+    return res.status(500).json({ error: "Помилка при додаванні коментаря: " + err.message });
+  }
+};
 
     // 💬 Додаємо коментар і отримуємо вручну останній запис
     const result = await sequelize.query(
