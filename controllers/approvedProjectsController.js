@@ -91,7 +91,7 @@ const approvedProjectsController = {
     } catch (error) {
       console.error("❌ [getFinalJuryDecisions] Помилка:", error);
       return res.status(500).json({
-        message: "Не вдалося отримати фінальні рішення журі.",
+        message: "Не вдалося отримати фінальні рішння журі.",
         error: error.message
       });
     }
