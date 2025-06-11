@@ -17,7 +17,6 @@ getProjectManagerById: async (req, res) => {
 
     let { pmId } = req.params;
 
-    // Якщо шлях /pm/me — підставимо ID з токена
     if (pmId === "me") {
       if (!req.user || !req.user.id) {
         return res.status(401).json({ message: "Неавторизований доступ" });
@@ -25,20 +24,20 @@ getProjectManagerById: async (req, res) => {
       pmId = req.user.id;
     }
 
-    console.log(`🔍  Пошук PM з id = ${pmId}`);
+    console.log(`🔍  Пошук PM, де user_id = ${pmId}`);
 
     const result = await sequelize.query(
       `
       SELECT
-        id   AS pm_id,
-        first_name,
-        last_name,
-        email,
-        phone,
-        created_at,
-        updated_at
-      FROM project_managers
-      WHERE id = :pmId
+        pm.id           AS pm_id,
+        pm.first_name,
+        pm.last_name,
+        pm.email,
+        pm.phone,
+        u.role
+      FROM project_managers pm
+      LEFT JOIN users u ON pm.user_id = u.id
+      WHERE pm.user_id = :pmId
       `,
       {
         replacements: { pmId },
@@ -47,11 +46,11 @@ getProjectManagerById: async (req, res) => {
     );
 
     if (!result || result.length === 0) {
-      console.warn(`❗️ PM з id ${pmId} не знайдено`);
+      console.warn(`❗️ PM з user_id = ${pmId} не знайдено`);
       return res.status(404).json({ message: "Проєктного менеджера не знайдено" });
     }
 
-    console.log("✅  PM знайдено:", result[0]);
+    console.log("✅  Повертаємо PM:", result[0]);
     return res.status(200).json(result[0]);
 
   } catch (error) {
