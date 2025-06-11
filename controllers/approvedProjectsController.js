@@ -9,7 +9,7 @@ const approvedProjectsController = {
   /* 📌 GET  /approvedProjectsRoutes/pm/:pmId                        */
   /*     GET  /approvedProjectsRoutes/pm/me   (via middleware)       */
   /* ---------------------------------------------------------------- */
-  getProjectManagerById: async (req, res) => {
+getProjectManagerById: async (req, res) => {
   try {
     console.log("🟢  [getProjectManagerById] викликано");
     console.log("📥  req.user:", req.user);
@@ -24,20 +24,20 @@ const approvedProjectsController = {
       pmId = req.user.id;
     }
 
-    console.log(`🔍  Шукаємо PM з id = ${pmId}`);
+    console.log(`🔍  Шукаємо PM з user_id = ${pmId}`);
 
     const result = await sequelize.query(
       `
       SELECT
-        id   AS pm_id,
-        first_name,
-        last_name,
-        email,
-        phone,
-        created_at,
-        updated_at
-      FROM project_managers
-      WHERE id = :pmId
+        pm.id           AS pm_id,
+        pm.first_name,
+        pm.last_name,
+        pm.email,
+        pm.phone,
+        u.role
+      FROM project_managers pm
+      LEFT JOIN users u ON pm.user_id = u.id
+      WHERE pm.user_id = :pmId
       `,
       {
         replacements: { pmId },
@@ -46,7 +46,7 @@ const approvedProjectsController = {
     );
 
     if (!result || result.length === 0) {
-      console.warn(`❗️ PM з id ${pmId} не знайдено`);
+      console.warn(`❗️ PM з user_id = ${pmId} не знайдено`);
       return res.status(404).json({ message: "Проєктного менеджера не знайдено" });
     }
 
@@ -61,6 +61,7 @@ const approvedProjectsController = {
     });
   }
 },
+
   /* ──────────────────────────────────────────────────────────────── */
   /* 📌 GET  /approvedProjectsRoutes/jury-decisions/final             */
   /* ---------------------------------------------------------------- */
