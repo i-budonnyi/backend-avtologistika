@@ -30,7 +30,7 @@ const getSecretaryById = async (req, res) => {
       return res.status(400).json({ message: "Некоректний ID секретаря" });
     }
 
-    const secretary = await sequelize.query(
+    const [secretary] = await sequelize.query(
       `SELECT id, phone, email, first_name, last_name, user_id, role
        FROM secretaries WHERE id = :secretaryId LIMIT 1`,
       {
@@ -39,11 +39,11 @@ const getSecretaryById = async (req, res) => {
       }
     );
 
-    if (!secretary.length) {
+    if (!secretary) {
       return res.status(404).json({ message: "Секретаря не знайдено" });
     }
 
-    res.status(200).json(secretary[0]);
+    res.status(200).json(secretary);
   } catch (error) {
     res.status(500).json({ message: "Помилка отримання секретаря", error: error.message });
   }
@@ -56,10 +56,6 @@ const getAllSecretaries = async (req, res) => {
       `SELECT id, phone, email, first_name, last_name, role FROM secretaries`,
       { type: QueryTypes.SELECT }
     );
-
-    if (!secretaries.length) {
-      return res.status(200).json({ message: "Секретарів не знайдено" });
-    }
 
     res.status(200).json(secretaries);
   } catch (error) {
@@ -84,10 +80,6 @@ const fetchApplicationsBySecretary = async (req, res) => {
       }
     );
 
-    if (!applications.length) {
-      return res.status(200).json({ message: "Немає заявок" });
-    }
-
     res.status(200).json(applications);
   } catch (error) {
     res.status(500).json({ message: "Помилка отримання заявок", error: error.message });
@@ -104,7 +96,7 @@ const updateSecretaryProfile = async (req, res) => {
       return res.status(400).json({ message: "Обов’язкові поля відсутні" });
     }
 
-    const [updated] = await sequelize.query(
+    const [result] = await sequelize.query(
       `UPDATE secretaries SET phone = :phone, email = :email,
         first_name = :first_name, last_name = :last_name, updated_at = NOW()
        WHERE id = :secretaryId RETURNING *`,
@@ -114,17 +106,17 @@ const updateSecretaryProfile = async (req, res) => {
       }
     );
 
-    if (!updated || !updated.length) {
+    if (!result || !result.length) {
       return res.status(404).json({ message: "Секретаря не знайдено" });
     }
 
-    res.status(200).json({ message: "✅ Профіль оновлено", data: updated[0] });
+    res.status(200).json({ message: "✅ Профіль оновлено", data: result[0] });
   } catch (error) {
     res.status(500).json({ message: "Помилка оновлення профілю", error: error.message });
   }
 };
 
-// 🔔 Викликати при створенні нової заявки
+// 🔔 Сповіщення WebSocket про нову заявку
 const notifySecretaryAboutNewApplication = (secretaryId, applicationData) => {
   io.emit("application_assigned_to_secretary", {
     secretaryId,
@@ -132,7 +124,7 @@ const notifySecretaryAboutNewApplication = (secretaryId, applicationData) => {
   });
 };
 
-// ✅ Експорт
+// ✅ Експорт функцій
 module.exports = {
   authenticateSecretary,
   getSecretaryById,
