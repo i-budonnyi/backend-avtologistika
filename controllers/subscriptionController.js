@@ -10,10 +10,15 @@ const getUserIdFromToken = (req) => {
   try {
     const authHeader = req.headers.authorization;
     if (!authHeader || !authHeader.startsWith("Bearer ")) return null;
+
     const token = authHeader.split(" ")[1];
     const decoded = jwt.verify(token, JWT_SECRET);
+
+    console.log("✅ JWT decoded:", decoded);
+
     return decoded.user_id || decoded.id || null;
   } catch (err) {
+    console.error("❌ JWT помилка:", err.message);
     return null;
   }
 };
@@ -23,6 +28,8 @@ const getSubscriptions = async (req, res) => {
   try {
     const user_id = getUserIdFromToken(req);
     if (!user_id) return res.status(401).json({ error: "Необхідно авторизуватися." });
+
+    console.log("🔍 Отримуємо підписки для user_id:", user_id);
 
     const subscriptions = await sequelize.query(
       `SELECT 
@@ -47,9 +54,12 @@ const getSubscriptions = async (req, res) => {
       { replacements: { user_id }, type: QueryTypes.SELECT }
     );
 
+    console.log("✅ Підписок знайдено:", subscriptions.length);
+
     res.status(200).json({ subscriptions });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error("❌ Помилка при отриманні підписок:", err);
+    res.status(500).json({ error: "Помилка при отриманні підписок", details: err.message });
   }
 };
 
@@ -75,7 +85,6 @@ const subscribeToEntry = async (req, res) => {
       { replacements: { user_id, entry_id }, type: QueryTypes.INSERT }
     );
 
-    // 🔔 Вебсокет — повідомити про нову підписку
     io.emit("subscription_added", {
       user_id,
       entry_id,
@@ -85,7 +94,8 @@ const subscribeToEntry = async (req, res) => {
 
     res.status(201).json({ message: "Підписка додана." });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error("❌ Помилка під час підписки:", err);
+    res.status(500).json({ error: "Не вдалося підписатися", details: err.message });
   }
 };
 
@@ -112,7 +122,8 @@ const unsubscribeFromEntry = async (req, res) => {
 
     res.status(200).json({ message: "Підписка видалена." });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error("❌ Помилка при відписці:", err);
+    res.status(500).json({ error: "Не вдалося відписатися", details: err.message });
   }
 };
 
