@@ -59,12 +59,12 @@ const getSubscriptions = async (req, res) => {
 
 // ✅ Підписка
 const subscribeToEntry = async (req, res) => {
-  const { post_id, blog_id, idea_id } = req.body;
+  const { post_id, blog_id, idea_id, problem_id } = req.body;
   const user_id = getUserIdFromToken(req);
   if (!user_id) return res.status(401).json({ error: "Необхідно авторизуватися." });
 
-  const column = post_id ? "post_id" : blog_id ? "blog_id" : idea_id ? "idea_id" : null;
-  const value = post_id || blog_id || idea_id;
+  const column = post_id ? "post_id" : blog_id ? "blog_id" : idea_id ? "idea_id" : problem_id ? "problem_id" : null;
+  const value = post_id || blog_id || idea_id || problem_id;
 
   if (!column || !value)
     return res.status(400).json({ error: "Не вказано ID сутності для підписки." });
@@ -90,12 +90,12 @@ const subscribeToEntry = async (req, res) => {
 
 // ✅ Відписка
 const unsubscribeFromEntry = async (req, res) => {
-  const { post_id, blog_id, idea_id } = req.body;
+  const { post_id, blog_id, idea_id, problem_id } = req.body;
   const user_id = getUserIdFromToken(req);
   if (!user_id) return res.status(401).json({ error: "Необхідно авторизуватися." });
 
-  const column = post_id ? "post_id" : blog_id ? "blog_id" : idea_id ? "idea_id" : null;
-  const value = post_id || blog_id || idea_id;
+  const column = post_id ? "post_id" : blog_id ? "blog_id" : idea_id ? "idea_id" : problem_id ? "problem_id" : null;
+  const value = post_id || blog_id || idea_id || problem_id;
 
   if (!column || !value)
     return res.status(400).json({ error: "Не вказано ID сутності для відписки." });
@@ -113,7 +113,7 @@ const unsubscribeFromEntry = async (req, res) => {
     io.emit("subscription_removed", { user_id, entry_id: value, column, timestamp: new Date() });
     res.status(200).json({ message: "Підписка видалена." });
   } catch (err) {
-    console.error("❌ Помлка при відписці:", err.message);
+    console.error("❌ Помилка при відписці:", err.message);
     res.status(500).json({ error: "Не вдалося відписатися", details: err.message });
   }
 };
