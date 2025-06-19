@@ -25,29 +25,26 @@ const getSubscriptions = async (req, res) => {
   const user_id = getUserIdFromToken(req);
   if (!user_id) return res.status(401).json({ error: "Необхідно авторизуватися." });
 
- const sql = `
-  SELECT 
-    s.blog_id, s.idea_id, s.problem_id, s.post_id,
-    COALESCE(b.title, i.title, p.title, po.title) AS title,
-    COALESCE(b.description, i.description, p.description, po.description) AS description,
-    COALESCE(i.status, p.status, po.status, 'N/A') AS status,
-    COALESCE(b.user_id, i.user_id, p.user_id, po.user_id) AS author_id,
-    u.first_name AS author_first_name,
-    u.last_name AS author_last_name
-  FROM subscriptions s
-  LEFT JOIN blogs b ON s.blog_id = b.id
-  LEFT JOIN ideas i ON s.idea_id = i.id
-  LEFT JOIN problems p ON s.problem_id = p.id
-  LEFT JOIN posts po ON s.post_id = po.id
-  LEFT JOIN users u ON u.id = COALESCE(b.user_id, i.user_id, p.user_id, po.user_id)
-  WHERE s.user_id = :user_id
-    AND (
-      b.id IS NOT NULL OR i.id IS NOT NULL OR p.id IS NOT NULL OR po.id IS NOT NULL
-    )
-`;
-
-`;
-
+  const sql = `
+    SELECT 
+      s.blog_id, s.idea_id, s.problem_id, s.post_id,
+      COALESCE(b.title, i.title, p.title, po.title) AS title,
+      COALESCE(b.description, i.description, p.description, po.description) AS description,
+      COALESCE(i.status, p.status, po.status, 'N/A') AS status,
+      COALESCE(b.user_id, i.user_id, p.user_id, po.user_id) AS author_id,
+      u.first_name AS author_first_name,
+      u.last_name AS author_last_name
+    FROM subscriptions s
+    LEFT JOIN blogs b ON s.blog_id = b.id
+    LEFT JOIN ideas i ON s.idea_id = i.id
+    LEFT JOIN problems p ON s.problem_id = p.id
+    LEFT JOIN posts po ON s.post_id = po.id
+    LEFT JOIN users u ON u.id = COALESCE(b.user_id, i.user_id, p.user_id, po.user_id)
+    WHERE s.user_id = :user_id
+      AND (
+        b.id IS NOT NULL OR i.id IS NOT NULL OR p.id IS NOT NULL OR po.id IS NOT NULL
+      )
+  `;
 
   try {
     const subscriptions = await sequelize.query(sql, {
