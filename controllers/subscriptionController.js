@@ -30,13 +30,7 @@ const getSubscriptions = async (req, res) => {
       s.blog_id, s.idea_id, s.problem_id, s.post_id,
       COALESCE(b.title, i.title, p.title, po.title) AS title,
       COALESCE(b.description, i.description, p.description, po.description) AS description,
-      COALESCE(i.status, p.status, po.status, NULL) AS status,
-      CASE 
-        WHEN s.blog_id IS NOT NULL THEN 'blog'
-        WHEN s.idea_id IS NOT NULL THEN 'idea'
-        WHEN s.problem_id IS NOT NULL THEN 'problem'
-        WHEN s.post_id IS NOT NULL THEN 'post'
-      END AS type,
+      COALESCE(b.status, i.status, p.status, po.status, 'N/A') AS status,
       COALESCE(b.user_id, i.user_id, p.user_id, po.user_id) AS author_id,
       u.first_name AS author_first_name,
       u.last_name AS author_last_name
@@ -46,23 +40,19 @@ const getSubscriptions = async (req, res) => {
     LEFT JOIN problems p ON s.problem_id = p.id
     LEFT JOIN posts po ON s.post_id = po.id
     LEFT JOIN users u ON u.id = COALESCE(b.user_id, i.user_id, p.user_id, po.user_id)
-    WHERE s.user_id = :user_id;
+    WHERE s.user_id = :user_id
   `;
 
   try {
     const subscriptions = await sequelize.query(sql, {
       replacements: { user_id },
       type: QueryTypes.SELECT,
-      logging: console.log,
     });
 
     res.status(200).json({ subscriptions });
   } catch (err) {
     console.error("❌ SQL помилка:", err.message);
-    res.status(500).json({
-      error: "Помилка при отриманні підписок",
-      message: err.message,
-    });
+    res.status(500).json({ error: "Помилка при отриманні підписок", message: err.message });
   }
 };
 
