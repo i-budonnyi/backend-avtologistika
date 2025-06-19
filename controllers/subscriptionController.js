@@ -39,14 +39,14 @@ const getSubscriptions = async (req, res) => {
   const sql = `
     SELECT 
       s.post_id,
-      p.title,
-      p.description,
-      p.status,
+      i.title,
+      i.description,
+      i.status,
       u.first_name AS author_first_name,
       u.last_name AS author_last_name
     FROM subscriptions s
-    JOIN posts p ON s.post_id = p.id
-    JOIN users u ON p.user_id = u.id
+    JOIN ideas i ON s.post_id = i.id
+    JOIN users u ON i.user_id = u.id
     WHERE s.user_id = :user_id
   `;
 
