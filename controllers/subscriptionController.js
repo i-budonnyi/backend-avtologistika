@@ -72,6 +72,34 @@ const getSubscriptions = async (req, res) => {
     });
   }
 };
+// ✅ Підписатися
+const subscribeToEntry = async (req, res) => {
+  try {
+    const { entry_id, entry_type } = req.body;
+    const user_id = getUserIdFromToken(req);
+    if (!user_id) return res.status(401).json({ error: "Необхідно авторизуватися." });
+
+    const column = entry_type === "blog" ? "blog_id" : entry_type === "idea" ? "idea_id" : "problem_id";
+
+    await sequelize.query(
+      `INSERT INTO subscriptions (user_id, ${column}) VALUES (:user_id, :entry_id)
+       ON CONFLICT DO NOTHING`,
+      { replacements: { user_id, entry_id }, type: QueryTypes.INSERT }
+    );
+
+    io.emit("subscription_added", {
+      user_id,
+      entry_id,
+      entry_type,
+      timestamp: new Date()
+    });
+
+    res.status(200).json({ message: "Підписка додана." });
+  } catch (err) {
+    console.error("❌ Помилка при підписці:", err);
+    res.status(500).json({ error: "Не вдалося підписатися", details: err.message });
+  }
+};
 
 // ✅ Відписатися
 const unsubscribeFromEntry = async (req, res) => {
@@ -103,6 +131,6 @@ const unsubscribeFromEntry = async (req, res) => {
 
 module.exports = {
   getSubscriptions,
-  subscribeToEntry,
+  subscribeToEntry, // ✅ downe
   unsubscribeFromEntry,
 };
