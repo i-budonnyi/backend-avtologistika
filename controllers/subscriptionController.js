@@ -25,7 +25,7 @@ const getSubscriptions = async (req, res) => {
   const user_id = getUserIdFromToken(req);
   if (!user_id) return res.status(401).json({ error: "Необхідно авторизуватися." });
 
-  const sql = `
+ const sql = `
   SELECT 
     s.blog_id, s.idea_id, s.problem_id, s.post_id,
     COALESCE(b.title, i.title, p.title, po.title) AS title,
@@ -41,6 +41,11 @@ const getSubscriptions = async (req, res) => {
   LEFT JOIN posts po ON s.post_id = po.id
   LEFT JOIN users u ON u.id = COALESCE(b.user_id, i.user_id, p.user_id, po.user_id)
   WHERE s.user_id = :user_id
+    AND (
+      b.id IS NOT NULL OR i.id IS NOT NULL OR p.id IS NOT NULL OR po.id IS NOT NULL
+    )
+`;
+
 `;
 
 
