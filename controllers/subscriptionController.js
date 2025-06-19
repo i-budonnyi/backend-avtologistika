@@ -58,35 +58,46 @@ const getSubscriptions = async (req, res) => {
 };
 
 // ✅ Підписка
+// ✅ Підписка з дебагом
 const subscribeToEntry = async (req, res) => {
   const { post_id, blog_id, idea_id, problem_id } = req.body;
   const user_id = getUserIdFromToken(req);
+
+  console.log("📥 Запит на підписку:", { post_id, blog_id, idea_id, problem_id });
+  console.log("🔐 Отримано user_id:", user_id);
+
   if (!user_id) return res.status(401).json({ error: "Необхідно авторизуватися." });
 
   const column = post_id ? "post_id" : blog_id ? "blog_id" : idea_id ? "idea_id" : problem_id ? "problem_id" : null;
   const value = post_id || blog_id || idea_id || problem_id;
 
+  console.log("📌 Визначено колонку для підписки:", column);
+  console.log("📌 Значення ID для підписки:", value);
+
   if (!column || !value)
     return res.status(400).json({ error: "Не вказано ID сутності для підписки." });
 
   try {
-    await sequelize.query(
+    const [result, metadata] = await sequelize.query(
       `INSERT INTO subscriptions (user_id, ${column}) VALUES (:user_id, :value)
        ON CONFLICT DO NOTHING`,
       {
         replacements: { user_id, value },
         type: QueryTypes.INSERT,
-        logging: false,
+        logging: console.log, // 🔍 Покажемо SQL
       }
     );
 
+    console.log("✅ Запит INSERT виконано. Результат:", result, "Метадані:", metadata);
+
     io.emit("subscription_added", { user_id, entry_id: value, column, timestamp: new Date() });
-    res.status(200).json({ message: "Підписка додана." });
+    res.status(200).json({ message: "✅ Підписка додана." });
   } catch (err) {
     console.error("❌ Помилка при підписці:", err.message);
     res.status(500).json({ error: "Не вдалося підписатися", details: err.message });
   }
 };
+
 
 // ✅ Відписка
 const unsubscribeFromEntry = async (req, res) => {
