@@ -27,25 +27,33 @@ const getSubscriptions = async (req, res) => {
 
   const sql = `
     SELECT 
-      s.post_id,
-      COALESCE(p.title, b.title, i.title) AS title,
-      COALESCE(p.description, b.description, i.description) AS description,
-      COALESCE(p.status, b.status, i.status) AS status,
+      s.blog_id, s.idea_id, s.problem_id, s.post_id,
+      COALESCE(b.title, i.title, p.title, po.title) AS title,
+      COALESCE(b.description, i.description, p.description, po.description) AS description,
+      COALESCE(i.status, p.status, po.status, NULL) AS status,
+      CASE 
+        WHEN s.blog_id IS NOT NULL THEN 'blog'
+        WHEN s.idea_id IS NOT NULL THEN 'idea'
+        WHEN s.problem_id IS NOT NULL THEN 'problem'
+        WHEN s.post_id IS NOT NULL THEN 'post'
+      END AS type,
+      COALESCE(b.user_id, i.user_id, p.user_id, po.user_id) AS author_id,
       u.first_name AS author_first_name,
       u.last_name AS author_last_name
     FROM subscriptions s
-    LEFT JOIN posts p ON s.post_id = p.id
     LEFT JOIN blogs b ON s.blog_id = b.id
     LEFT JOIN ideas i ON s.idea_id = i.id
-    LEFT JOIN users u ON u.id = COALESCE(p.user_id, b.user_id, i.user_id)
-    WHERE s.user_id = :user_id
+    LEFT JOIN problems p ON s.problem_id = p.id
+    LEFT JOIN posts po ON s.post_id = po.id
+    LEFT JOIN users u ON u.id = COALESCE(b.user_id, i.user_id, p.user_id, po.user_id)
+    WHERE s.user_id = :user_id;
   `;
 
   try {
     const subscriptions = await sequelize.query(sql, {
       replacements: { user_id },
       type: QueryTypes.SELECT,
-      logging: false,
+      logging: console.log,
     });
 
     res.status(200).json({ subscriptions });
