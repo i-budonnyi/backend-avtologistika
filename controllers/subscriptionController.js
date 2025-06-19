@@ -118,7 +118,7 @@ const unsubscribeFromEntry = async (req, res) => {
     io.emit("subscription_removed", { user_id, entry_id: value, column, timestamp: new Date() });
     res.status(200).json({ message: "Підписка видалена." });
   } catch (err) {
-    console.error("❌ Помилка при відписці:", err.message);
+    console.error("❌ Помлка при відписці:", err.message);
     res.status(500).json({ error: "Не вдалося відписатися", details: err.message });
   }
 };
