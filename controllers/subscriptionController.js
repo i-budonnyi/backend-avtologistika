@@ -42,7 +42,10 @@ const getSubscriptions = async (req, res) => {
     LEFT JOIN users u ON u.id = COALESCE(b.user_id, i.user_id, p.user_id, po.user_id)
     WHERE s.user_id = :user_id
       AND (
-        b.id IS NOT NULL OR i.id IS NOT NULL OR p.id IS NOT NULL OR po.id IS NOT NULL
+        s.blog_id IS NOT NULL AND b.id IS NOT NULL OR
+        s.idea_id IS NOT NULL AND i.id IS NOT NULL OR
+        s.problem_id IS NOT NULL AND p.id IS NOT NULL OR
+        s.post_id IS NOT NULL AND po.id IS NOT NULL
       )
   `;
 
@@ -58,6 +61,7 @@ const getSubscriptions = async (req, res) => {
     res.status(500).json({ error: "Помилка при отриманні підписок", message: err.message });
   }
 };
+
 
 // ✅ Підписка
 const subscribeToEntry = async (req, res) => {
