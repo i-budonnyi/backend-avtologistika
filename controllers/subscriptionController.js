@@ -20,28 +20,16 @@ const getUserIdFromToken = (req) => {
   }
 };
 
-// ✅ Отримати всі підписки користувача
+// ✅ Отримати всі підписки користувача (без JOIN)
 const getSubscriptions = async (req, res) => {
   const user_id = getUserIdFromToken(req);
-  if (!user_id) return res.status(401).json({ error: "Необхідно авторизуватися." });
+  if (!user_id)
+    return res.status(401).json({ error: "Необхідно авторизуватися." });
 
   const sql = `
-    SELECT 
-      s.post_id, s.blog_id, s.idea_id, s.problem_id,
-      COALESCE(po.title, b.title, i.title, p.title) AS title,
-      COALESCE(po.description, b.description, i.description, p.description) AS description,
-      COALESCE(po.status, i.status, p.status, 'N/A') AS status,
-      COALESCE(po.user_id, b.user_id, i.user_id, p.user_id) AS author_id,
-      u.first_name AS author_first_name,
-      u.last_name AS author_last_name
-    FROM subscriptions s
-    LEFT JOIN posts po ON s.post_id = po.id
-    LEFT JOIN blogs b ON s.blog_id = b.id
-    LEFT JOIN ideas i ON s.idea_id = i.id
-    LEFT JOIN problems p ON s.problem_id = p.id
-    LEFT JOIN users u ON u.id = COALESCE(po.user_id, b.user_id, i.user_id, p.user_id)
-    WHERE s.user_id = :user_id
-      AND (po.id IS NOT NULL OR b.id IS NOT NULL OR i.id IS NOT NULL OR p.id IS NOT NULL)
+    SELECT * FROM subscriptions
+    WHERE user_id = :user_id
+    ORDER BY updated_at DESC
   `;
 
   try {
@@ -53,12 +41,14 @@ const getSubscriptions = async (req, res) => {
     res.status(200).json({ subscriptions });
   } catch (err) {
     console.error("❌ SQL помилка:", err.message);
-    res.status(500).json({ error: "Помилка при отриманні підписок", message: err.message });
+    res.status(500).json({
+      error: "Помилка при отриманні підписок",
+      message: err.message,
+    });
   }
 };
 
 // ✅ Підписка
-// ✅ Підписка з дебагом
 const subscribeToEntry = async (req, res) => {
   const { post_id, blog_id, idea_id, problem_id } = req.body;
   const user_id = getUserIdFromToken(req);
@@ -66,16 +56,27 @@ const subscribeToEntry = async (req, res) => {
   console.log("📥 Запит на підписку:", { post_id, blog_id, idea_id, problem_id });
   console.log("🔐 Отримано user_id:", user_id);
 
-  if (!user_id) return res.status(401).json({ error: "Необхідно авторизуватися." });
+  if (!user_id)
+    return res.status(401).json({ error: "Необхідно авторизуватися." });
 
-  const column = post_id ? "post_id" : blog_id ? "blog_id" : idea_id ? "idea_id" : problem_id ? "problem_id" : null;
+  const column = post_id
+    ? "post_id"
+    : blog_id
+    ? "blog_id"
+    : idea_id
+    ? "idea_id"
+    : problem_id
+    ? "problem_id"
+    : null;
   const value = post_id || blog_id || idea_id || problem_id;
 
   console.log("📌 Визначено колонку для підписки:", column);
   console.log("📌 Значення ID для підписки:", value);
 
   if (!column || !value)
-    return res.status(400).json({ error: "Не вказано ID сутності для підписки." });
+    return res
+      .status(400)
+      .json({ error: "Не вказано ID сутності для підписки." });
 
   try {
     const [result, metadata] = await sequelize.query(
@@ -90,26 +91,44 @@ const subscribeToEntry = async (req, res) => {
 
     console.log("✅ Запит INSERT виконано. Результат:", result, "Метадані:", metadata);
 
-    io.emit("subscription_added", { user_id, entry_id: value, column, timestamp: new Date() });
+    io.emit("subscription_added", {
+      user_id,
+      entry_id: value,
+      column,
+      timestamp: new Date(),
+    });
     res.status(200).json({ message: "✅ Підписка додана." });
   } catch (err) {
     console.error("❌ Помилка при підписці:", err.message);
-    res.status(500).json({ error: "Не вдалося підписатися", details: err.message });
+    res.status(500).json({
+      error: "Не вдалося підписатися",
+      details: err.message,
+    });
   }
 };
-
 
 // ✅ Відписка
 const unsubscribeFromEntry = async (req, res) => {
   const { post_id, blog_id, idea_id, problem_id } = req.body;
   const user_id = getUserIdFromToken(req);
-  if (!user_id) return res.status(401).json({ error: "Необхідно авторизуватися." });
+  if (!user_id)
+    return res.status(401).json({ error: "Необхідно авторизуватися." });
 
-  const column = post_id ? "post_id" : blog_id ? "blog_id" : idea_id ? "idea_id" : problem_id ? "problem_id" : null;
+  const column = post_id
+    ? "post_id"
+    : blog_id
+    ? "blog_id"
+    : idea_id
+    ? "idea_id"
+    : problem_id
+    ? "problem_id"
+    : null;
   const value = post_id || blog_id || idea_id || problem_id;
 
   if (!column || !value)
-    return res.status(400).json({ error: "Не вказано ID сутності для відписки." });
+    return res
+      .status(400)
+      .json({ error: "Не вказано ID сутності для відписки." });
 
   try {
     await sequelize.query(
@@ -121,11 +140,19 @@ const unsubscribeFromEntry = async (req, res) => {
       }
     );
 
-    io.emit("subscription_removed", { user_id, entry_id: value, column, timestamp: new Date() });
+    io.emit("subscription_removed", {
+      user_id,
+      entry_id: value,
+      column,
+      timestamp: new Date(),
+    });
     res.status(200).json({ message: "Підписка видалена." });
   } catch (err) {
     console.error("❌ Помилка при відписці:", err.message);
-    res.status(500).json({ error: "Не вдалося відписатися", details: err.message });
+    res.status(500).json({
+      error: "Не вдалося відписатися",
+      details: err.message,
+    });
   }
 };
 
