@@ -20,33 +20,59 @@ const getUserIdFromToken = (req) => {
   }
 };
 
-// ✅ Отримати всі підписки користувача (без JOIN)
+// ✅ Отримати всі підписки користувача з деталями (з дебагом)
 const getSubscriptions = async (req, res) => {
   const user_id = getUserIdFromToken(req);
-  if (!user_id)
+  console.log("🧾 Отримано JWT, user_id:", user_id);
+
+  if (!user_id) {
+    console.warn("⚠️ Відсутній або некоректний токен авторизації.");
     return res.status(401).json({ error: "Необхідно авторизуватися." });
+  }
 
   const sql = `
-    SELECT * FROM subscriptions
-    WHERE user_id = :user_id
-    ORDER BY updated_at DESC
+    SELECT 
+      s.*,
+      COALESCE(po.title, b.title, i.title, p.title) AS title,
+      COALESCE(po.description, b.description, i.description, p.description) AS description,
+      COALESCE(po.status, i.status, p.status, 'N/A') AS status,
+      COALESCE(po.user_id, b.user_id, i.user_id, p.user_id) AS author_id,
+      u.first_name AS author_first_name,
+      u.last_name AS author_last_name
+    FROM subscriptions s
+    LEFT JOIN posts po ON s.post_id = po.id
+    LEFT JOIN blogs b ON s.blog_id = b.id
+    LEFT JOIN ideas i ON s.idea_id = i.id
+    LEFT JOIN problems p ON s.problem_id = p.id
+    LEFT JOIN users u ON u.id = COALESCE(po.user_id, b.user_id, i.user_id, p.user_id)
+    WHERE s.user_id = :user_id
+    ORDER BY s.updated_at DESC
   `;
+
+  console.log("📥 SQL-запит до subscriptions з JOIN-ами сформовано.");
+  console.log("🔍 SQL:\n", sql);
+  console.log("📦 Параметри:", { user_id });
 
   try {
     const subscriptions = await sequelize.query(sql, {
       replacements: { user_id },
       type: QueryTypes.SELECT,
+      logging: console.log, // покаже виконання SQL у консолі
     });
+
+    console.log(`✅ Отримано ${subscriptions.length} підписок для user_id = ${user_id}`);
+    console.log("📋 Перша підписка (якщо є):", subscriptions[0] || "Немає даних");
 
     res.status(200).json({ subscriptions });
   } catch (err) {
-    console.error("❌ SQL помилка:", err.message);
+    console.error("❌ SQL помилка при отриманні підписок:", err.message);
     res.status(500).json({
       error: "Помилка при отриманні підписок",
       message: err.message,
     });
   }
 };
+
 
 // ✅ Підписка
 const subscribeToEntry = async (req, res) => {
