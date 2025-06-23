@@ -20,7 +20,7 @@ const getUserIdFromToken = (req) => {
   }
 };
 
-// ✅ Отримати всі підписки користувача
+// ✅ Отримати всі підписки користувача з уточненим CASE-логуванням
 const getSubscriptions = async (req, res) => {
   const user_id = getUserIdFromToken(req);
   console.log("🧾 JWT -> user_id:", user_id);
@@ -33,10 +33,32 @@ const getSubscriptions = async (req, res) => {
   const sql = `
     SELECT 
       s.*,
-      COALESCE(po.title, b.title, i.title, p.title, 'Без назви') AS title,
-      COALESCE(po.description, b.description, i.description, p.description, 'Без опису') AS description,
-      COALESCE(po.status, i.status, p.status, 'N/A') AS status,
-      COALESCE(po.user_id, b.user_id, i.user_id, p.user_id) AS author_id,
+      CASE
+        WHEN s.post_id IS NOT NULL THEN po.title
+        WHEN s.blog_id IS NOT NULL THEN b.title
+        WHEN s.idea_id IS NOT NULL THEN i.title
+        WHEN s.problem_id IS NOT NULL THEN p.title
+        ELSE 'Без назви'
+      END AS title,
+      CASE
+        WHEN s.post_id IS NOT NULL THEN po.description
+        WHEN s.blog_id IS NOT NULL THEN b.description
+        WHEN s.idea_id IS NOT NULL THEN i.description
+        WHEN s.problem_id IS NOT NULL THEN p.description
+        ELSE 'Без опису'
+      END AS description,
+      CASE
+        WHEN s.post_id IS NOT NULL THEN po.status
+        WHEN s.idea_id IS NOT NULL THEN i.status
+        WHEN s.problem_id IS NOT NULL THEN p.status
+        ELSE 'N/A'
+      END AS status,
+      CASE
+        WHEN s.post_id IS NOT NULL THEN po.user_id
+        WHEN s.blog_id IS NOT NULL THEN b.user_id
+        WHEN s.idea_id IS NOT NULL THEN i.user_id
+        WHEN s.problem_id IS NOT NULL THEN p.user_id
+      END AS author_id,
       u.first_name AS author_first_name,
       u.last_name AS author_last_name
     FROM subscriptions s
@@ -44,7 +66,12 @@ const getSubscriptions = async (req, res) => {
     LEFT JOIN blogs b ON s.blog_id = b.id
     LEFT JOIN ideas i ON s.idea_id = i.id
     LEFT JOIN problems p ON s.problem_id = p.id
-    LEFT JOIN users u ON u.id = COALESCE(po.user_id, b.user_id, i.user_id, p.user_id)
+    LEFT JOIN users u ON u.id = CASE
+      WHEN s.post_id IS NOT NULL THEN po.user_id
+      WHEN s.blog_id IS NOT NULL THEN b.user_id
+      WHEN s.idea_id IS NOT NULL THEN i.user_id
+      WHEN s.problem_id IS NOT NULL THEN p.user_id
+    END
     WHERE s.user_id = :user_id
     ORDER BY s.updated_at DESC
   `;
