@@ -31,23 +31,25 @@ const getSubscriptions = async (req, res) => {
   }
 
   const sql = `
-    SELECT 
-      s.*,
-      COALESCE(po.title, b.title, i.title, p.title) AS title,
-      COALESCE(po.description, b.description, i.description, p.description) AS description,
-      COALESCE(po.status, i.status, p.status, 'N/A') AS status,
-      COALESCE(po.user_id, b.user_id, i.user_id, p.user_id) AS author_id,
-      u.first_name AS author_first_name,
-      u.last_name AS author_last_name
-    FROM subscriptions s
-    LEFT JOIN posts po ON s.post_id = po.id
-    LEFT JOIN blogs b ON s.blog_id = b.id
-    LEFT JOIN ideas i ON s.idea_id = i.id
-    LEFT JOIN problems p ON s.problem_id = p.id
-    LEFT JOIN users u ON u.id = COALESCE(po.user_id, b.user_id, i.user_id, p.user_id)
-    WHERE s.user_id = :user_id
-    ORDER BY s.updated_at DESC
-  `;
+  SELECT 
+    s.*,
+    COALESCE(po.title, b.title, i.title, p.title) AS title,
+    COALESCE(po.description, b.description, i.description, p.description) AS description,
+    COALESCE(po.status, i.status, p.status, 'N/A') AS status,
+    COALESCE(po.user_id, b.user_id, i.user_id, p.user_id) AS author_id,
+    u.first_name AS author_first_name,
+    u.last_name AS author_last_name
+  FROM subscriptions s
+  LEFT JOIN posts po ON s.post_id = po.id
+  LEFT JOIN blogs b ON s.blog_id = b.id
+  LEFT JOIN ideas i ON s.idea_id = i.id
+  LEFT JOIN problems p ON s.problem_id = p.id
+  LEFT JOIN users u ON u.id = COALESCE(po.user_id, b.user_id, i.user_id, p.user_id)
+  WHERE s.user_id = :user_id
+    AND (po.id IS NOT NULL OR b.id IS NOT NULL OR i.id IS NOT NULL OR p.id IS NOT NULL)
+  ORDER BY s.updated_at DESC
+`;
+
 
   console.log("📥 SQL-запит до subscriptions з JOIN-ами сформовано.");
   console.log("🔍 SQL:\n", sql);
