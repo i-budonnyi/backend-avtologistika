@@ -20,54 +20,53 @@ const getUserIdFromToken = (req) => {
   }
 };
 
-// ✅ Отримати всі підписки користувача з деталями (з дебагом)
+// ✅ Отримати всі підписки користувача
 const getSubscriptions = async (req, res) => {
   const user_id = getUserIdFromToken(req);
-  console.log("🧾 Отримано JWT, user_id:", user_id);
+  console.log("🧾 JWT -> user_id:", user_id);
 
   if (!user_id) {
-    console.warn("⚠️ Відсутній або некоректний токен авторизації.");
+    console.warn("⚠️ Немає авторизації.");
     return res.status(401).json({ error: "Необхідно авторизуватися." });
   }
 
   const sql = `
-  SELECT 
-    s.*,
-    COALESCE(po.title, b.title, i.title, p.title) AS title,
-    COALESCE(po.description, b.description, i.description, p.description) AS description,
-    COALESCE(po.status, i.status, p.status, 'N/A') AS status,
-    COALESCE(po.user_id, b.user_id, i.user_id, p.user_id) AS author_id,
-    u.first_name AS author_first_name,
-    u.last_name AS author_last_name
-  FROM subscriptions s
-  LEFT JOIN posts po ON s.post_id = po.id
-  LEFT JOIN blogs b ON s.blog_id = b.id
-  LEFT JOIN ideas i ON s.idea_id = i.id
-  LEFT JOIN problems p ON s.problem_id = p.id
-  LEFT JOIN users u ON u.id = COALESCE(po.user_id, b.user_id, i.user_id, p.user_id)
-  WHERE s.user_id = :user_id
-    AND (po.id IS NOT NULL OR b.id IS NOT NULL OR i.id IS NOT NULL OR p.id IS NOT NULL)
-  ORDER BY s.updated_at DESC
-`;
+    SELECT 
+      s.*,
+      COALESCE(po.title, b.title, i.title, p.title, 'Без назви') AS title,
+      COALESCE(po.description, b.description, i.description, p.description, 'Без опису') AS description,
+      COALESCE(po.status, i.status, p.status, 'N/A') AS status,
+      COALESCE(po.user_id, b.user_id, i.user_id, p.user_id) AS author_id,
+      u.first_name AS author_first_name,
+      u.last_name AS author_last_name
+    FROM subscriptions s
+    LEFT JOIN posts po ON s.post_id = po.id
+    LEFT JOIN blogs b ON s.blog_id = b.id
+    LEFT JOIN ideas i ON s.idea_id = i.id
+    LEFT JOIN problems p ON s.problem_id = p.id
+    LEFT JOIN users u ON u.id = COALESCE(po.user_id, b.user_id, i.user_id, p.user_id)
+    WHERE s.user_id = :user_id
+    ORDER BY s.updated_at DESC
+  `;
 
-
-  console.log("📥 SQL-запит до subscriptions з JOIN-ами сформовано.");
-  console.log("🔍 SQL:\n", sql);
-  console.log("📦 Параметри:", { user_id });
+  console.log("📥 SQL сформовано. Параметри:", { user_id });
+  console.log("📜 SQL:\n", sql);
 
   try {
     const subscriptions = await sequelize.query(sql, {
       replacements: { user_id },
       type: QueryTypes.SELECT,
-      logging: console.log, // покаже виконання SQL у консолі
+      logging: console.log,
     });
 
-    console.log(`✅ Отримано ${subscriptions.length} підписок для user_id = ${user_id}`);
-    console.log("📋 Перша підписка (якщо є):", subscriptions[0] || "Немає даних");
+    console.log(`✅ Отримано ${subscriptions.length} підписок`);
+    if (subscriptions.length > 0) {
+      console.log("🧾 Перша:", subscriptions[0]);
+    }
 
     res.status(200).json({ subscriptions });
   } catch (err) {
-    console.error("❌ SQL помилка при отриманні підписок:", err.message);
+    console.error("❌ Помилка SQL:", err.message);
     res.status(500).json({
       error: "Помилка при отриманні підписок",
       message: err.message,
@@ -75,17 +74,17 @@ const getSubscriptions = async (req, res) => {
   }
 };
 
-
 // ✅ Підписка
 const subscribeToEntry = async (req, res) => {
   const { post_id, blog_id, idea_id, problem_id } = req.body;
   const user_id = getUserIdFromToken(req);
 
   console.log("📥 Запит на підписку:", { post_id, blog_id, idea_id, problem_id });
-  console.log("🔐 Отримано user_id:", user_id);
+  console.log("🔐 user_id:", user_id);
 
-  if (!user_id)
+  if (!user_id) {
     return res.status(401).json({ error: "Необхідно авторизуватися." });
+  }
 
   const column = post_id
     ? "post_id"
@@ -98,33 +97,33 @@ const subscribeToEntry = async (req, res) => {
     : null;
   const value = post_id || blog_id || idea_id || problem_id;
 
-  console.log("📌 Визначено колонку для підписки:", column);
-  console.log("📌 Значення ID для підписки:", value);
-
-  if (!column || !value)
+  if (!column || !value) {
+    console.warn("⚠️ Не вказано ID об'єкта для підписки.");
     return res
       .status(400)
       .json({ error: "Не вказано ID сутності для підписки." });
+  }
 
   try {
     const [result, metadata] = await sequelize.query(
-      `INSERT INTO subscriptions (user_id, ${column}) VALUES (:user_id, :value)
+      `INSERT INTO subscriptions (user_id, ${column}) 
+       VALUES (:user_id, :value) 
        ON CONFLICT DO NOTHING`,
       {
         replacements: { user_id, value },
         type: QueryTypes.INSERT,
-        logging: console.log, // 🔍 Покажемо SQL
+        logging: console.log,
       }
     );
 
-    console.log("✅ Запит INSERT виконано. Результат:", result, "Метадані:", metadata);
-
+    console.log("✅ INSERT виконано:", result);
     io.emit("subscription_added", {
       user_id,
       entry_id: value,
       column,
       timestamp: new Date(),
     });
+
     res.status(200).json({ message: "✅ Підписка додана." });
   } catch (err) {
     console.error("❌ Помилка при підписці:", err.message);
@@ -139,8 +138,10 @@ const subscribeToEntry = async (req, res) => {
 const unsubscribeFromEntry = async (req, res) => {
   const { post_id, blog_id, idea_id, problem_id } = req.body;
   const user_id = getUserIdFromToken(req);
-  if (!user_id)
+
+  if (!user_id) {
     return res.status(401).json({ error: "Необхідно авторизуватися." });
+  }
 
   const column = post_id
     ? "post_id"
@@ -153,10 +154,11 @@ const unsubscribeFromEntry = async (req, res) => {
     : null;
   const value = post_id || blog_id || idea_id || problem_id;
 
-  if (!column || !value)
+  if (!column || !value) {
     return res
       .status(400)
       .json({ error: "Не вказано ID сутності для відписки." });
+  }
 
   try {
     await sequelize.query(
@@ -174,6 +176,7 @@ const unsubscribeFromEntry = async (req, res) => {
       column,
       timestamp: new Date(),
     });
+
     res.status(200).json({ message: "Підписка видалена." });
   } catch (err) {
     console.error("❌ Помилка при відписці:", err.message);
