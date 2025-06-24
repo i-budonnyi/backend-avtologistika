@@ -10,7 +10,6 @@ const getUserIdFromToken = (req) => {
   try {
     const authHeader = req.headers.authorization;
     if (!authHeader || !authHeader.startsWith("Bearer ")) return null;
-
     const token = authHeader.split(" ")[1];
     const decoded = jwt.verify(token, JWT_SECRET);
     return decoded.user_id ?? decoded.id ?? null;
@@ -71,64 +70,72 @@ const getSubscriptions = async (req, res) => {
       replacements: { user_id },
       type: QueryTypes.SELECT,
     });
-
-    res.status(200).json({ subscriptions });
+    res.status(200).json(subscriptions); // 🔄 масив
   } catch (err) {
     console.error("❌ SQL помилка:", err.message);
     res.status(500).json({ error: "Помилка при отриманні підписок", details: err.message });
   }
 };
 
-// ✅ Підписка з перевіркою title/description
+// ✅ Підписка на запис
 const subscribeToEntry = async (req, res) => {
-  const { post_id, blog_id, idea_id, problem_id } = req.body;
   const user_id = getUserIdFromToken(req);
   if (!user_id) return res.status(401).json({ error: "Необхідно авторизуватися." });
 
-  const column = post_id ? "post_id" : blog_id ? "blog_id" : idea_id ? "idea_id" : problem_id ? "problem_id" : null;
-  const value = post_id || blog_id || idea_id || problem_id;
+  const { entry_id, entry_type } = req.body;
 
-  if (!column || !value) {
-    return res.status(400).json({ error: "Не вказано ID сутності для підписки." });
+  if (!entry_id || !entry_type) {
+    return res.status(400).json({ error: "Не вказано ID або тип сутності для підписки." });
   }
 
-  // Перевірка на наявність контенту
-  const tableMap = {
-    post_id: "posts",
-    blog_id: "blogs",
-    idea_id: "ideas",
-    problem_id: "problems",
+  const columnMap = {
+    blog: "blog_id",
+    idea: "idea_id",
+    problem: "problem_id",
+    post: "post_id",
   };
 
-  const tableName = tableMap[column];
+  const tableMap = {
+    blog: "blogs",
+    idea: "ideas",
+    problem: "problems",
+    post: "posts",
+  };
+
+  const column = columnMap[entry_type];
+  const table = tableMap[entry_type];
+
+  if (!column || !table) {
+    return res.status(400).json({ error: "Невідомий тип сутності." });
+  }
 
   try {
-    const [results] = await sequelize.query(
-      `SELECT title, description FROM ${tableName} WHERE id = :id LIMIT 1`,
+    const [result] = await sequelize.query(
+      `SELECT title, description FROM ${table} WHERE id = :id LIMIT 1`,
       {
-        replacements: { id: value },
+        replacements: { id: entry_id },
         type: QueryTypes.SELECT,
       }
     );
 
-    if (!results || (!results.title && !results.description)) {
+    if (!result || (!result.title && !result.description)) {
       return res.status(400).json({ error: "Неможливо підписатись — об'єкт не має назви або опису." });
     }
 
     await sequelize.query(
       `INSERT INTO subscriptions (user_id, ${column}) 
-       VALUES (:user_id, :value) 
+       VALUES (:user_id, :entry_id) 
        ON CONFLICT DO NOTHING`,
       {
-        replacements: { user_id, value },
+        replacements: { user_id, entry_id },
         type: QueryTypes.INSERT,
       }
     );
 
     io.emit("subscription_added", {
       user_id,
-      entry_id: value,
-      column,
+      entry_id,
+      entry_type,
       timestamp: new Date(),
     });
 
@@ -141,30 +148,37 @@ const subscribeToEntry = async (req, res) => {
 
 // ✅ Відписка
 const unsubscribeFromEntry = async (req, res) => {
-  const { post_id, blog_id, idea_id, problem_id } = req.body;
   const user_id = getUserIdFromToken(req);
   if (!user_id) return res.status(401).json({ error: "Необхідно авторизуватися." });
 
-  const column = post_id ? "post_id" : blog_id ? "blog_id" : idea_id ? "idea_id" : problem_id ? "problem_id" : null;
-  const value = post_id || blog_id || idea_id || problem_id;
+  const { entry_id, entry_type } = req.body;
 
-  if (!column || !value) {
-    return res.status(400).json({ error: "Не вказано ID сутності для відписки." });
+  const columnMap = {
+    blog: "blog_id",
+    idea: "idea_id",
+    problem: "problem_id",
+    post: "post_id",
+  };
+
+  const column = columnMap[entry_type];
+
+  if (!column || !entry_id) {
+    return res.status(400).json({ error: "Не вказано ID або тип сутності для відписки." });
   }
 
   try {
     await sequelize.query(
-      `DELETE FROM subscriptions WHERE user_id = :user_id AND ${column} = :value`,
+      `DELETE FROM subscriptions WHERE user_id = :user_id AND ${column} = :entry_id`,
       {
-        replacements: { user_id, value },
+        replacements: { user_id, entry_id },
         type: QueryTypes.DELETE,
       }
     );
 
     io.emit("subscription_removed", {
       user_id,
-      entry_id: value,
-      column,
+      entry_id,
+      entry_type,
       timestamp: new Date(),
     });
 
