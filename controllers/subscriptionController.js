@@ -79,6 +79,7 @@ const getSubscriptions = async (req, res) => {
 };
 
 // ✅ Підписка
+// ✅ Підписка
 const subscribeToEntry = async (req, res) => {
   const user_id = getUserIdFromToken(req);
   if (!user_id) return res.status(401).json({ error: "Необхідно авторизуватися." });
@@ -111,20 +112,20 @@ const subscribeToEntry = async (req, res) => {
   }
 
   try {
-    const results = await sequelize.query(
-      `SELECT id FROM ${table} WHERE id = :id LIMIT 1`,
+    // ❗ Перевірити чи існує запис у відповідній таблиці
+    const existing = await sequelize.query(
+      `SELECT id FROM ${table} WHERE id = :entry_id LIMIT 1`,
       {
-        replacements: { id: entry_id },
+        replacements: { entry_id },
         type: QueryTypes.SELECT,
       }
     );
 
-    const entry = results[0];
-
-    if (!entry) {
+    if (!existing || existing.length === 0) {
       return res.status(404).json({ error: "Об'єкт не знайдено в базі даних." });
     }
 
+    // ❗ Додати підписку
     await sequelize.query(
       `INSERT INTO subscriptions (user_id, ${column}) 
        VALUES (:user_id, :entry_id) 
