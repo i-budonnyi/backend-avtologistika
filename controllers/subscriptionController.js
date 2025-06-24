@@ -79,7 +79,6 @@ const getSubscriptions = async (req, res) => {
 };
 
 // ✅ Підписка
-// ✅ Підписка
 const subscribeToEntry = async (req, res) => {
   const user_id = getUserIdFromToken(req);
   if (!user_id) return res.status(401).json({ error: "Необхідно авторизуватися." });
@@ -112,8 +111,9 @@ const subscribeToEntry = async (req, res) => {
   }
 
   try {
-    // ❗ Перевірити чи існує запис у відповідній таблиці
-    const existing = await sequelize.query(
+    console.log("📥 Підписка на:", { user_id, entry_id, entry_type, table });
+
+    const result = await sequelize.query(
       `SELECT id FROM ${table} WHERE id = :entry_id LIMIT 1`,
       {
         replacements: { entry_id },
@@ -121,11 +121,10 @@ const subscribeToEntry = async (req, res) => {
       }
     );
 
-    if (!existing || existing.length === 0) {
+    if (!result || result.length === 0) {
       return res.status(404).json({ error: "Об'єкт не знайдено в базі даних." });
     }
 
-    // ❗ Додати підписку
     await sequelize.query(
       `INSERT INTO subscriptions (user_id, ${column}) 
        VALUES (:user_id, :entry_id) 
@@ -189,7 +188,7 @@ const unsubscribeFromEntry = async (req, res) => {
     res.status(200).json({ message: "Підписка видалена." });
   } catch (err) {
     console.error("❌ Помилка при відписці:", err.message);
-    res.status(500).json({ error: " вдалося відписатися", details: err.message });
+    res.status(500).json({ error: "Не вдалося відписатися", details: err.message });
   }
 };
 
