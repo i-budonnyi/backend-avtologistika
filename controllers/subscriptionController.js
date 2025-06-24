@@ -79,6 +79,7 @@ const getSubscriptions = async (req, res) => {
 };
 
 // ✅ Підписка
+// ✅ Підписка на entries — завжди через blogs
 const subscribeToEntry = async (req, res) => {
   const user_id = getUserIdFromToken(req);
   if (!user_id) return res.status(401).json({ error: "Необхідно авторизуватися." });
@@ -89,65 +90,51 @@ const subscribeToEntry = async (req, res) => {
     return res.status(400).json({ error: "Не вказано ID або тип сутності для підписки." });
   }
 
-  const columnMap = {
-    blog: "blog_id",
-    idea: "idea_id",
-    problem: "problem_id",
-    post: "post_id",
-  };
-
-  const tableMap = {
-    blog: "blogs",
-    idea: "ideas",
-    problem: "problems",
-    post: "posts",
-  };
-
-  const column = columnMap[entry_type];
-  const table = tableMap[entry_type];
-
-  if (!column || !table) {
-    return res.status(400).json({ error: "Невідомий тип сутності." });
-  }
-
   try {
-    console.log("📥 Підписка на:", { user_id, entry_id, entry_type, table });
+    console.log("📥 Підписка на:", { user_id, entry_id, entry_type });
 
-    const result = await sequelize.query(
-      `SELECT id FROM ${table} WHERE id = :entry_id LIMIT 1`,
-      {
-        replacements: { entry_id },
-        type: QueryTypes.SELECT,
-      }
-    );
+    // Перевірка чи запис існує в blogs (source_type + source_id)
+    const checkSql = `
+      SELECT id FROM blogs 
+      WHERE source_type = :entry_type AND source_id = :entry_id
+      LIMIT 1
+    `;
+    const blogEntry = await sequelize.query(checkSql, {
+      replacements: { entry_type, entry_id },
+      type: QueryTypes.SELECT,
+    });
 
-    if (!result || result.length === 0) {
-      return res.status(404).json({ error: "Об'єкт не знайдено в базі даних." });
+    if (!blogEntry || blogEntry.length === 0) {
+      return res.status(404).json({ error: `Немає відповідного запису у blogs для ${entry_type} з ID ${entry_id}` });
     }
 
+    const blog_id = blogEntry[0].id;
+
+    // Додаємо підписку на blog_id
     await sequelize.query(
-      `INSERT INTO subscriptions (user_id, ${column}) 
-       VALUES (:user_id, :entry_id) 
+      `INSERT INTO subscriptions (user_id, blog_id)
+       VALUES (:user_id, :blog_id)
        ON CONFLICT DO NOTHING`,
       {
-        replacements: { user_id, entry_id },
+        replacements: { user_id, blog_id },
         type: QueryTypes.INSERT,
       }
     );
 
     io.emit("subscription_added", {
       user_id,
-      entry_id,
-      entry_type,
+      entry_id: blog_id,
+      entry_type: "blog", // бо ми підписуємось на blogs
       timestamp: new Date(),
     });
 
-    res.status(200).json({ message: "✅ Підписка додана." });
+    res.status(200).json({ message: "✅ Підписка додана до blogs.", blog_id });
   } catch (err) {
     console.error("❌ Помилка підписки:", err.message);
     res.status(500).json({ error: "Не вдалося підписатися", details: err.message });
   }
 };
+
 
 // ✅ Відписка
 const unsubscribeFromEntry = async (req, res) => {
