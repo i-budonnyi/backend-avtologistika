@@ -70,14 +70,14 @@ const getSubscriptions = async (req, res) => {
       replacements: { user_id },
       type: QueryTypes.SELECT,
     });
-    res.status(200).json(subscriptions); // 🔄 масив
+    res.status(200).json(subscriptions);
   } catch (err) {
     console.error("❌ SQL помилка:", err.message);
     res.status(500).json({ error: "Помилка при отриманні підписок", details: err.message });
   }
 };
 
-// ✅ Підписка на запис
+// ✅ Підписка
 const subscribeToEntry = async (req, res) => {
   const user_id = getUserIdFromToken(req);
   if (!user_id) return res.status(401).json({ error: "Необхідно авторизуватися." });
@@ -110,7 +110,7 @@ const subscribeToEntry = async (req, res) => {
   }
 
   try {
-    const [result] = await sequelize.query(
+    const result = await sequelize.query(
       `SELECT title, description FROM ${table} WHERE id = :id LIMIT 1`,
       {
         replacements: { id: entry_id },
@@ -118,7 +118,7 @@ const subscribeToEntry = async (req, res) => {
       }
     );
 
-    if (!result || (!result.title && !result.description)) {
+    if (!result || !result[0] || (!result[0].title && !result[0].description)) {
       return res.status(400).json({ error: "Неможливо підписатись — об'єкт не має назви або опису." });
     }
 
