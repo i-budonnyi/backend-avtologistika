@@ -27,6 +27,7 @@ const getSubscriptions = async (req, res) => {
   const sql = `
     SELECT 
       s.*,
+      COALESCE(s.blog_id, s.idea_id, s.problem_id, s.post_id) AS entry_id,
       CASE
         WHEN s.post_id IS NOT NULL THEN po.title
         WHEN s.blog_id IS NOT NULL THEN b.title
