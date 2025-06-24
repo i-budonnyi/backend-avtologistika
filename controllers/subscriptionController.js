@@ -111,7 +111,7 @@ const subscribeToEntry = async (req, res) => {
 
   try {
     const results = await sequelize.query(
-      `SELECT title, description FROM ${table} WHERE id = :id LIMIT 1`,
+      `SELECT id FROM ${table} WHERE id = :id LIMIT 1`,
       {
         replacements: { id: entry_id },
         type: QueryTypes.SELECT,
@@ -120,8 +120,8 @@ const subscribeToEntry = async (req, res) => {
 
     const entry = results[0];
 
-    if (!entry || (!entry.title && !entry.description)) {
-      return res.status(400).json({ error: "Неможливо підписатись — об'єкт не має назви або опису." });
+    if (!entry) {
+      return res.status(404).json({ error: "Об'єкт не знайдено в базі даних." });
     }
 
     await sequelize.query(
