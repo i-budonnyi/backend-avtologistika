@@ -4,7 +4,6 @@ const jwt = require("jsonwebtoken");
 const { io } = require("../index"); // 📡 WebSocket
 
 // 🔧 Створення заявки з перевіркою дубля та зміною статусу ідеї
-// 🔧 Створення заявки з перевіркою дубля та зміною статусу ідеї
 const createApplication = async (req, res) => {
   try {
     const { user_id, title, content, idea_id, type } = req.body;
@@ -30,7 +29,7 @@ const createApplication = async (req, res) => {
       return res.status(409).json({ message: "Заявку вже створено для цієї ідеї." });
     }
 
-    const result = await sequelize.query(
+    const [insertedRows] = await sequelize.query(
       `INSERT INTO applications (user_id, title, content, idea_id, type, status, created_at, updated_at)
        VALUES (:user_id, :title, :content, :idea_id, :type, 'draft', NOW(), NOW()) RETURNING *`,
       {
@@ -39,7 +38,12 @@ const createApplication = async (req, res) => {
       }
     );
 
-    const newApplication = Array.isArray(result) && Array.isArray(result[0]) ? result[0][0] : result[0];
+    const newApplication = insertedRows?.[0]; // 🔒 надійно
+
+    if (!newApplication) {
+      console.error("❌ Заявка створена, але не повернута.");
+      return res.status(500).json({ message: "Помилка збереження заявки." });
+    }
 
     await sequelize.query(
       `UPDATE ideas SET status = 'applied', updated_at = NOW() WHERE id = :idea_id`,
@@ -56,10 +60,12 @@ const createApplication = async (req, res) => {
       type,
     });
 
-    res.status(201).json(newApplication);
+    console.log("✅ Створено заявку:", newApplication);
+
+    return res.status(201).json(newApplication); // 🔁 гарантовано
   } catch (error) {
     console.error("❌ Помилка створення заявки:", error);
-    res.status(500).json({ message: "Внутрішня помилка сервера" });
+    return res.status(500).json({ message: "Внутрішня помилка сервера" });
   }
 };
 
