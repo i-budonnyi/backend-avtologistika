@@ -2,7 +2,6 @@ const sequelize = require("../config/database");
 const { QueryTypes } = require("sequelize");
 const jwt = require("jsonwebtoken");
 
-// ⚠️ Гарантовано працює навіть якщо io ще не підключено
 let io;
 try {
   const shared = require("../index");
@@ -27,18 +26,24 @@ const getUserIdFromToken = (req) => {
   }
 };
 
-// ✅ Отримати всі підписки користувача
-// ✅ Отримати всі унікальні підписки користувача 
+// ✅ Отримати всі унікальні підписки користувача
 const getSubscriptions = async (req, res) => {
   const user_id = getUserIdFromToken(req);
   if (!user_id) return res.status(401).json({ error: "Необхідно авторизуватися." });
 
-  const sql = 
+  const sql = `
     SELECT DISTINCT ON (entry_id) *
     FROM (
       SELECT 
         s.id AS subscription_id,
         COALESCE(s.blog_id, s.idea_id, s.problem_id, s.post_id) AS entry_id,
+        CASE
+          WHEN s.post_id IS NOT NULL THEN 'post'
+          WHEN s.blog_id IS NOT NULL THEN 'blog'
+          WHEN s.idea_id IS NOT NULL THEN 'idea'
+          WHEN s.problem_id IS NOT NULL THEN 'problem'
+          ELSE 'unknown'
+        END AS entry_type,
         CASE
           WHEN s.post_id IS NOT NULL THEN po.title
           WHEN s.blog_id IS NOT NULL THEN b.title
@@ -71,21 +76,20 @@ const getSubscriptions = async (req, res) => {
       LEFT JOIN users u ON u.id = COALESCE(po.user_id, b.user_id, i.user_id, p.user_id)
       WHERE s.user_id = :user_id
     ) AS entries
-    ORDER BY entry_id, created_at DESC
-  ;
+    ORDER BY entry_id, created_at DESC;
+  `;
 
   try {
     const subscriptions = await sequelize.query(sql, {
       replacements: { user_id },
       type: QueryTypes.SELECT,
     });
-    res.status(200).json({ subscriptions }); // ✅ обгортаємо в об'єкт для фронтенду
+    res.status(200).json({ subscriptions });
   } catch (err) {
     console.error("❌ SQL помилка:", err.message);
     res.status(500).json({ error: "Помилка при отриманні підписок", details: err.message });
   }
 };
-
 
 // ✅ Підписка
 const subscribeToEntry = async (req, res) => {
