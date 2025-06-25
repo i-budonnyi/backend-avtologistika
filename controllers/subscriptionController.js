@@ -33,45 +33,54 @@ const getSubscriptions = async (req, res) => {
   if (!user_id) return res.status(401).json({ error: "Необхідно авторизуватися." });
 
   const sql = `
-    SELECT 
-      s.*,
-      COALESCE(s.blog_id, s.idea_id, s.problem_id, s.post_id) AS entry_id,
-      CASE
-        WHEN s.post_id IS NOT NULL THEN po.title
-        WHEN s.blog_id IS NOT NULL THEN b.title
-        WHEN s.idea_id IS NOT NULL THEN i.title
-        WHEN s.problem_id IS NOT NULL THEN p.title
-        ELSE 'Без назви'
-      END AS title,
-      CASE
-        WHEN s.post_id IS NOT NULL THEN po.description
-        WHEN s.blog_id IS NOT NULL THEN b.description
-        WHEN s.idea_id IS NOT NULL THEN i.description
-        WHEN s.problem_id IS NOT NULL THEN p.description
-        ELSE 'Без опису'
-      END AS description,
-      CASE
-        WHEN s.post_id IS NOT NULL THEN po.status
-        WHEN s.idea_id IS NOT NULL THEN i.status
-        WHEN s.problem_id IS NOT NULL THEN p.status
-        ELSE 'N/A'
-      END AS status,
-      CASE
-        WHEN s.post_id IS NOT NULL THEN po.user_id
-        WHEN s.blog_id IS NOT NULL THEN b.user_id
-        WHEN s.idea_id IS NOT NULL THEN i.user_id
-        WHEN s.problem_id IS NOT NULL THEN p.user_id
-      END AS author_id,
-      u.first_name AS author_first_name,
-      u.last_name AS author_last_name
-    FROM subscriptions s
-    LEFT JOIN posts po ON s.post_id = po.id
-    LEFT JOIN blog b ON s.blog_id = b.id
-    LEFT JOIN ideas i ON s.idea_id = i.id
-    LEFT JOIN problems p ON s.problem_id = p.id
-    LEFT JOIN users u ON u.id = COALESCE(po.user_id, b.user_id, i.user_id, p.user_id)
-    WHERE s.user_id = :user_id
-    ORDER BY s.updated_at DESC;
+    SELECT DISTINCT ON (entry_id) 
+      subscription_id,
+      entry_id,
+      title,
+      description,
+      status,
+      created_at,
+      author_id,
+      author_first_name,
+      author_last_name
+    FROM (
+      SELECT 
+        s.id AS subscription_id,
+        COALESCE(s.blog_id, s.idea_id, s.problem_id, s.post_id) AS entry_id,
+        CASE
+          WHEN s.post_id IS NOT NULL THEN po.title
+          WHEN s.blog_id IS NOT NULL THEN b.title
+          WHEN s.idea_id IS NOT NULL THEN i.title
+          WHEN s.problem_id IS NOT NULL THEN p.title
+          ELSE 'Без назви'
+        END AS title,
+        CASE
+          WHEN s.post_id IS NOT NULL THEN po.description
+          WHEN s.blog_id IS NOT NULL THEN b.description
+          WHEN s.idea_id IS NOT NULL THEN i.description
+          WHEN s.problem_id IS NOT NULL THEN p.description
+          ELSE 'Без опису'
+        END AS description,
+        CASE
+          WHEN s.post_id IS NOT NULL THEN po.status
+          WHEN s.blog_id IS NOT NULL THEN b.status
+          WHEN s.idea_id IS NOT NULL THEN i.status
+          WHEN s.problem_id IS NOT NULL THEN p.status
+          ELSE 'N/A'
+        END AS status,
+        COALESCE(po.created_at, b.created_at, i.created_at, p.created_at) AS created_at,
+        COALESCE(po.user_id, b.user_id, i.user_id, p.user_id) AS author_id,
+        u.first_name AS author_first_name,
+        u.last_name AS author_last_name
+      FROM subscriptions s
+      LEFT JOIN posts po ON s.post_id = po.id
+      LEFT JOIN blog b ON s.blog_id = b.id
+      LEFT JOIN ideas i ON s.idea_id = i.id
+      LEFT JOIN problems p ON s.problem_id = p.id
+      LEFT JOIN users u ON u.id = COALESCE(po.user_id, b.user_id, i.user_id, p.user_id)
+      WHERE s.user_id = :user_id
+    ) AS sub_data
+    ORDER BY entry_id, created_at DESC
   `;
 
   try {
@@ -79,12 +88,13 @@ const getSubscriptions = async (req, res) => {
       replacements: { user_id },
       type: QueryTypes.SELECT,
     });
-    res.status(200).json(subscriptions);
+    res.status(200).json({ subscriptions });
   } catch (err) {
     console.error("❌ SQL помилка:", err.message);
     res.status(500).json({ error: "Помилка при отриманні підписок", details: err.message });
   }
 };
+
 
 // ✅ Підписка
 const subscribeToEntry = async (req, res) => {
