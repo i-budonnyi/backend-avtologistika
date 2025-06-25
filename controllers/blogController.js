@@ -27,25 +27,29 @@ const authenticateUser = (req, res, next) => {
 // 📅 Отримати всі записи (blog, idea)
 const getAllEntries = async (req, res) => {
   try {
-    const blogs = await sequelize.query(`SELECT b.id, b.title, b.description, b.user_id AS authorId,
-      COALESCE(u.first_name, 'Невідомий') AS author_first_name,
-      COALESCE(u.last_name, '') AS author_last_name,
-      u.email AS author_email,
-      b.created_at AS createdAt
+    const blogs = await sequelize.query(
+      `SELECT b.id, b.title, b.description, b.user_id AS authorId,
+        COALESCE(u.first_name, 'Невідомий') AS author_first_name,
+        COALESCE(u.last_name, '') AS author_last_name,
+        u.email AS author_email,
+        b.created_at AS createdAt
       FROM blog b
       LEFT JOIN users u ON b.user_id = u.id
       ORDER BY b.created_at DESC`,
-      { type: QueryTypes.SELECT });
+      { type: QueryTypes.SELECT }
+    );
 
-    const ideas = await sequelize.query(`SELECT i.id, i.title, i.description, i.user_id AS authorId,
-      COALESCE(u.first_name, 'Невідомий') AS author_first_name,
-      COALESCE(u.last_name, '') AS author_last_name,
-      u.email AS author_email,
-      i.created_at AS createdAt
+    const ideas = await sequelize.query(
+      `SELECT i.id, i.title, i.description, i.user_id AS authorId,
+        COALESCE(u.first_name, 'Невідомий') AS author_first_name,
+        COALESCE(u.last_name, '') AS author_last_name,
+        u.email AS author_email,
+        i.created_at AS createdAt
       FROM ideas i
       LEFT JOIN users u ON i.user_id = u.id
       ORDER BY i.created_at DESC`,
-      { type: QueryTypes.SELECT });
+      { type: QueryTypes.SELECT }
+    );
 
     res.status(200).json({ blogs, ideas });
   } catch (error) {
@@ -121,7 +125,6 @@ const deleteBlogEntry = async (req, res) => {
 };
 
 // 💬 Додати коментар
-// 💬 Додати коментар
 const addComment = async (req, res) => {
   const { entry_id, entry_type, comment } = req.body;
   const user_id = req.user?.user_id;
@@ -142,7 +145,6 @@ const addComment = async (req, res) => {
   }
 
   try {
-    // Перевірка чи існує запис
     const [check] = await sequelize.query(
       `SELECT id FROM ${targetTable} WHERE id = :entry_id`,
       { replacements: { entry_id }, type: QueryTypes.SELECT }
@@ -152,7 +154,6 @@ const addComment = async (req, res) => {
       return res.status(404).json({ error: `Запис ${entry_type} з ID ${entry_id} не знайдено.` });
     }
 
-    // Додати коментар
     await sequelize.query(
       `INSERT INTO comments (post_id, user_id, text, created_at, updated_at)
        VALUES (:entry_id, :user_id, :comment, NOW(), NOW())`,
@@ -162,7 +163,6 @@ const addComment = async (req, res) => {
       }
     );
 
-    // Отримати останній коментар
     const [newComment] = await sequelize.query(
       `SELECT id, text AS comment, created_at AS "createdAt"
        FROM comments
@@ -175,7 +175,6 @@ const addComment = async (req, res) => {
       }
     );
 
-    // Отримати дані автора
     const [userInfo] = await sequelize.query(
       `SELECT first_name, last_name, email FROM users WHERE id = :user_id`,
       {
@@ -205,8 +204,6 @@ const addComment = async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 };
-
-
 
 // 📅 Отримати коментарі до запису
 const getCommentsByEntry = async (req, res) => {
