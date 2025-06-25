@@ -1,7 +1,15 @@
 const sequelize = require("../config/database");
 const { QueryTypes } = require("sequelize");
 const jwt = require("jsonwebtoken");
-const { io } = require("../index");
+
+// ⚠️ Гарантовано працює навіть якщо io ще не підключено
+let io;
+try {
+  const shared = require("../index");
+  io = shared.io;
+} catch (err) {
+  console.warn("⚠️ Socket.io не ініціалізовано (без WebSocket)");
+}
 
 const JWT_SECRET = process.env.JWT_SECRET || "your_secret_key";
 
@@ -107,7 +115,6 @@ const subscribeToEntry = async (req, res) => {
   }
 
   try {
-    // Перевірка чи існує запис у відповідній таблиці
     const checkSql = `SELECT id FROM ${table} WHERE id = :entry_id LIMIT 1`;
     const result = await sequelize.query(checkSql, {
       replacements: { entry_id },
@@ -118,7 +125,6 @@ const subscribeToEntry = async (req, res) => {
       return res.status(404).json({ error: `Немає відповідного запису у ${table} з ID ${entry_id}` });
     }
 
-    // Додавання підписки
     const insertSql = `
       INSERT INTO subscriptions (user_id, ${column})
       VALUES (:user_id, :entry_id)
@@ -129,12 +135,14 @@ const subscribeToEntry = async (req, res) => {
       type: QueryTypes.INSERT,
     });
 
-    io.emit("subscription_added", {
-      user_id,
-      entry_id,
-      entry_type,
-      timestamp: new Date(),
-    });
+    if (io) {
+      io.emit("subscription_added", {
+        user_id,
+        entry_id,
+        entry_type,
+        timestamp: new Date(),
+      });
+    }
 
     res.status(200).json({ message: `✅ Підписка додана до ${entry_type}.` });
   } catch (err) {
@@ -172,12 +180,14 @@ const unsubscribeFromEntry = async (req, res) => {
       }
     );
 
-    io.emit("subscription_removed", {
-      user_id,
-      entry_id,
-      entry_type,
-      timestamp: new Date(),
-    });
+    if (io) {
+      io.emit("subscription_removed", {
+        user_id,
+        entry_id,
+        entry_type,
+        timestamp: new Date(),
+      });
+    }
 
     res.status(200).json({ message: "Підписка видалена." });
   } catch (err) {
