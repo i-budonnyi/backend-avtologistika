@@ -28,77 +28,63 @@ const getUserIdFromToken = (req) => {
 };
 
 // ✅ Отримати всі підписки користувача
+// ✅ Отримати всі унікальні підписки користувача 
 const getSubscriptions = async (req, res) => {
   const user_id = getUserIdFromToken(req);
   if (!user_id) return res.status(401).json({ error: "Необхідно авторизуватися." });
 
-  const sql = `
-    SELECT *
+  const sql = 
+    SELECT DISTINCT ON (entry_id) *
     FROM (
       SELECT 
         s.id AS subscription_id,
         COALESCE(s.blog_id, s.idea_id, s.problem_id, s.post_id) AS entry_id,
         CASE
-          WHEN s.blog_id IS NOT NULL THEN 'blog'
-          WHEN s.idea_id IS NOT NULL THEN 'idea'
-          WHEN s.problem_id IS NOT NULL THEN 'problem'
-          WHEN s.post_id IS NOT NULL THEN 'post'
-          ELSE 'unknown'
-        END AS entry_type,
-        CASE
+          WHEN s.post_id IS NOT NULL THEN po.title
           WHEN s.blog_id IS NOT NULL THEN b.title
           WHEN s.idea_id IS NOT NULL THEN i.title
           WHEN s.problem_id IS NOT NULL THEN p.title
-          WHEN s.post_id IS NOT NULL THEN po.title
           ELSE 'Без назви'
         END AS title,
         CASE
+          WHEN s.post_id IS NOT NULL THEN po.description
           WHEN s.blog_id IS NOT NULL THEN b.description
           WHEN s.idea_id IS NOT NULL THEN i.description
           WHEN s.problem_id IS NOT NULL THEN p.description
-          WHEN s.post_id IS NOT NULL THEN po.description
           ELSE 'Без опису'
         END AS description,
         CASE
-          WHEN s.blog_id IS NOT NULL THEN b.status
+          WHEN s.post_id IS NOT NULL THEN po.status
           WHEN s.idea_id IS NOT NULL THEN i.status
           WHEN s.problem_id IS NOT NULL THEN p.status
-          WHEN s.post_id IS NOT NULL THEN po.status
           ELSE 'N/A'
         END AS status,
-        COALESCE(b.created_at, i.created_at, p.created_at, po.created_at) AS created_at,
-        COALESCE(b.user_id, i.user_id, p.user_id, po.user_id) AS author_id,
+        COALESCE(po.created_at, b.created_at, i.created_at, p.created_at) AS created_at,
+        COALESCE(po.user_id, b.user_id, i.user_id, p.user_id) AS author_id,
         u.first_name AS author_first_name,
-        u.last_name AS author_last_name,
-        ROW_NUMBER() OVER (
-          PARTITION BY COALESCE(s.blog_id, s.idea_id, s.problem_id, s.post_id)
-          ORDER BY s.updated_at DESC
-        ) AS rn
+        u.last_name AS author_last_name
       FROM subscriptions s
+      LEFT JOIN posts po ON s.post_id = po.id
       LEFT JOIN blog b ON s.blog_id = b.id
       LEFT JOIN ideas i ON s.idea_id = i.id
       LEFT JOIN problems p ON s.problem_id = p.id
-      LEFT JOIN posts po ON s.post_id = po.id
-      LEFT JOIN users u ON u.id = COALESCE(b.user_id, i.user_id, p.user_id, po.user_id)
+      LEFT JOIN users u ON u.id = COALESCE(po.user_id, b.user_id, i.user_id, p.user_id)
       WHERE s.user_id = :user_id
-    ) AS subq
-    WHERE rn = 1
-    ORDER BY created_at DESC
-  `;
+    ) AS entries
+    ORDER BY entry_id, created_at DESC
+  ;
 
   try {
     const subscriptions = await sequelize.query(sql, {
       replacements: { user_id },
       type: QueryTypes.SELECT,
     });
-
-    res.status(200).json({ subscriptions });
+    res.status(200).json({ subscriptions }); // ✅ обгортаємо в об'єкт для фронтенду
   } catch (err) {
     console.error("❌ SQL помилка:", err.message);
     res.status(500).json({ error: "Помилка при отриманні підписок", details: err.message });
   }
 };
-
 
 
 // ✅ Підписка
