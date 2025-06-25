@@ -33,16 +33,7 @@ const getSubscriptions = async (req, res) => {
   if (!user_id) return res.status(401).json({ error: "Необхідно авторизуватися." });
 
   const sql = `
-    SELECT DISTINCT ON (entry_id) 
-      subscription_id,
-      entry_id,
-      title,
-      description,
-      status,
-      created_at,
-      author_id,
-      author_first_name,
-      author_last_name
+    SELECT *
     FROM (
       SELECT 
         s.id AS subscription_id,
@@ -71,7 +62,11 @@ const getSubscriptions = async (req, res) => {
         COALESCE(po.created_at, b.created_at, i.created_at, p.created_at) AS created_at,
         COALESCE(po.user_id, b.user_id, i.user_id, p.user_id) AS author_id,
         u.first_name AS author_first_name,
-        u.last_name AS author_last_name
+        u.last_name AS author_last_name,
+        ROW_NUMBER() OVER (
+          PARTITION BY COALESCE(s.blog_id, s.idea_id, s.problem_id, s.post_id)
+          ORDER BY s.updated_at DESC
+        ) AS row_num
       FROM subscriptions s
       LEFT JOIN posts po ON s.post_id = po.id
       LEFT JOIN blog b ON s.blog_id = b.id
@@ -79,8 +74,9 @@ const getSubscriptions = async (req, res) => {
       LEFT JOIN problems p ON s.problem_id = p.id
       LEFT JOIN users u ON u.id = COALESCE(po.user_id, b.user_id, i.user_id, p.user_id)
       WHERE s.user_id = :user_id
-    ) AS sub_data
-    ORDER BY entry_id, created_at DESC
+    ) AS ranked
+    WHERE row_num = 1
+    ORDER BY created_at DESC
   `;
 
   try {
@@ -94,6 +90,7 @@ const getSubscriptions = async (req, res) => {
     res.status(500).json({ error: "Помилка при отриманні підписок", details: err.message });
   }
 };
+
 
 
 // ✅ Підписка
