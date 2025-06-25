@@ -58,7 +58,7 @@ const getSubscriptions = async (req, res) => {
       u.last_name AS author_last_name
     FROM subscriptions s
     LEFT JOIN posts po ON s.post_id = po.id
-    LEFT JOIN blogs b ON s.blog_id = b.id
+    LEFT JOIN blog b ON s.blog_id = b.id
     LEFT JOIN ideas i ON s.idea_id = i.id
     LEFT JOIN problems p ON s.problem_id = p.id
     LEFT JOIN users u ON u.id = COALESCE(po.user_id, b.user_id, i.user_id, p.user_id)
@@ -79,7 +79,6 @@ const getSubscriptions = async (req, res) => {
 };
 
 // ✅ Підписка
-// ✅ Підписка на entries — завжди через blogs
 const subscribeToEntry = async (req, res) => {
   const user_id = getUserIdFromToken(req);
   if (!user_id) return res.status(401).json({ error: "Необхідно авторизуватися." });
@@ -93,24 +92,23 @@ const subscribeToEntry = async (req, res) => {
   try {
     console.log("📥 Підписка на:", { user_id, entry_id, entry_type });
 
-    // Перевірка чи запис існує в blogs (source_type + source_id)
     const checkSql = `
-      SELECT id FROM blogs 
+      SELECT id FROM blog 
       WHERE source_type = :entry_type AND source_id = :entry_id
       LIMIT 1
     `;
+
     const blogEntry = await sequelize.query(checkSql, {
       replacements: { entry_type, entry_id },
       type: QueryTypes.SELECT,
     });
 
     if (!blogEntry || blogEntry.length === 0) {
-      return res.status(404).json({ error: `Немає відповідного запису у blogs для ${entry_type} з ID ${entry_id}` });
+      return res.status(404).json({ error: `Немає відповідного запису у blog для ${entry_type} з ID ${entry_id}` });
     }
 
     const blog_id = blogEntry[0].id;
 
-    // Додаємо підписку на blog_id
     await sequelize.query(
       `INSERT INTO subscriptions (user_id, blog_id)
        VALUES (:user_id, :blog_id)
@@ -124,17 +122,16 @@ const subscribeToEntry = async (req, res) => {
     io.emit("subscription_added", {
       user_id,
       entry_id: blog_id,
-      entry_type: "blog", // бо ми підписуємось на blogs
+      entry_type: "blog",
       timestamp: new Date(),
     });
 
-    res.status(200).json({ message: "✅ Підписка додана до blogs.", blog_id });
+    res.status(200).json({ message: "✅ Підписка додана до blog.", blog_id });
   } catch (err) {
     console.error("❌ Помилка підписки:", err.message);
     res.status(500).json({ error: "Не вдалося підписатися", details: err.message });
   }
 };
-
 
 // ✅ Відписка
 const unsubscribeFromEntry = async (req, res) => {
