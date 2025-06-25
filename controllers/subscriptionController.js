@@ -38,13 +38,6 @@ const getSubscriptions = async (req, res) => {
         s.id AS subscription_id,
         COALESCE(s.blog_id, s.idea_id, s.problem_id, s.post_id) AS entry_id,
         CASE
-          WHEN s.post_id IS NOT NULL THEN 'post'
-          WHEN s.blog_id IS NOT NULL THEN 'blog'
-          WHEN s.idea_id IS NOT NULL THEN 'idea'
-          WHEN s.problem_id IS NOT NULL THEN 'problem'
-          ELSE 'unknown'
-        END AS entry_type,
-        CASE
           WHEN s.post_id IS NOT NULL THEN po.title
           WHEN s.blog_id IS NOT NULL THEN b.title
           WHEN s.idea_id IS NOT NULL THEN i.title
@@ -76,7 +69,7 @@ const getSubscriptions = async (req, res) => {
       LEFT JOIN users u ON u.id = COALESCE(po.user_id, b.user_id, i.user_id, p.user_id)
       WHERE s.user_id = :user_id
     ) AS entries
-    ORDER BY entry_id, created_at DESC;
+    ORDER BY entry_id, created_at DESC
   `;
 
   try {
@@ -84,7 +77,7 @@ const getSubscriptions = async (req, res) => {
       replacements: { user_id },
       type: QueryTypes.SELECT,
     });
-    res.status(200).json({ subscriptions });
+    res.status(200).json(subscriptions); // 🔁 Тепер просто масив, як ти просив
   } catch (err) {
     console.error("❌ SQL помилка:", err.message);
     res.status(500).json({ error: "Помилка при отриманні підписок", details: err.message });
