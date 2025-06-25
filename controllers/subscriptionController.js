@@ -85,48 +85,58 @@ const subscribeToEntry = async (req, res) => {
 
   const { entry_id, entry_type } = req.body;
 
-  if (!entry_id || !entry_type) {
-    return res.status(400).json({ error: "Не вказано ID або тип сутності для підписки." });
+  const columnMap = {
+    blog: "blog_id",
+    idea: "idea_id",
+    problem: "problem_id",
+    post: "post_id",
+  };
+
+  const tableMap = {
+    blog: "blog",
+    idea: "ideas",
+    problem: "problems",
+    post: "posts",
+  };
+
+  const column = columnMap[entry_type];
+  const table = tableMap[entry_type];
+
+  if (!column || !table || !entry_id) {
+    return res.status(400).json({ error: "Некоректні тип або ID сутності." });
   }
 
   try {
-    console.log("📥 Підписка на:", { user_id, entry_id, entry_type });
-
-    const checkSql = `
-      SELECT id FROM blog 
-      WHERE source_type = :entry_type AND source_id = :entry_id
-      LIMIT 1
-    `;
-
-    const blogEntry = await sequelize.query(checkSql, {
-      replacements: { entry_type, entry_id },
+    // Перевірка чи існує запис у відповідній таблиці
+    const checkSql = `SELECT id FROM ${table} WHERE id = :entry_id LIMIT 1`;
+    const result = await sequelize.query(checkSql, {
+      replacements: { entry_id },
       type: QueryTypes.SELECT,
     });
 
-    if (!blogEntry || blogEntry.length === 0) {
-      return res.status(404).json({ error: `Немає відповідного запису у blog для ${entry_type} з ID ${entry_id}` });
+    if (!result || result.length === 0) {
+      return res.status(404).json({ error: `Немає відповідного запису у ${table} з ID ${entry_id}` });
     }
 
-    const blog_id = blogEntry[0].id;
-
-    await sequelize.query(
-      `INSERT INTO subscriptions (user_id, blog_id)
-       VALUES (:user_id, :blog_id)
-       ON CONFLICT DO NOTHING`,
-      {
-        replacements: { user_id, blog_id },
-        type: QueryTypes.INSERT,
-      }
-    );
+    // Додавання підписки
+    const insertSql = `
+      INSERT INTO subscriptions (user_id, ${column})
+      VALUES (:user_id, :entry_id)
+      ON CONFLICT DO NOTHING
+    `;
+    await sequelize.query(insertSql, {
+      replacements: { user_id, entry_id },
+      type: QueryTypes.INSERT,
+    });
 
     io.emit("subscription_added", {
       user_id,
-      entry_id: blog_id,
-      entry_type: "blog",
+      entry_id,
+      entry_type,
       timestamp: new Date(),
     });
 
-    res.status(200).json({ message: "✅ Підписка додана до blog.", blog_id });
+    res.status(200).json({ message: `✅ Підписка додана до ${entry_type}.` });
   } catch (err) {
     console.error("❌ Помилка підписки:", err.message);
     res.status(500).json({ error: "Не вдалося підписатися", details: err.message });
