@@ -1,20 +1,14 @@
 ﻿const sequelize = require("../config/database");
 const { QueryTypes } = require("sequelize");
 
-// простий інкрементний id для логів
 let reqId = 0;
 
-/**
- * GET /api/statusRoutes/get-statuses
- * optional query ?type=post|idea|problem
- * повертає масив статусів [ "pending", "approved", ... ]
- */
 const getStatusesByType = async (req, res) => {
   const id = ++reqId;
   const startedAt = Date.now();
   console.info(`🛈 [${id}] ▶️  getStatuses START`);
 
-  const { type } = req.query;           // ?type=idea
+  const { type } = req.query;
   let sql = "SELECT DISTINCT status FROM statuses";
   const replacements = {};
 
@@ -32,15 +26,21 @@ const getStatusesByType = async (req, res) => {
       replacements,
     });
 
-    console.info(`🛈 [${id}] ✓ rows returned: ${rows.length}`);
+    console.info(`🛈 [${id}] ✓ raw rows:`, rows);
 
-    const statuses = rows.map((r) => r.status); // → ["pending","approved",...]
+    const statuses = rows
+      .map((r) => String(r.status || "").trim())
+      .filter((s) => s && s.length > 0);
+
+    console.info(`🛈 [${id}] ✓ cleaned statuses:`, statuses);
+
     res.status(200).json(statuses);
   } catch (err) {
     console.error(`❌ [${id}] DB error:`, err.message);
-    res
-      .status(500)
-      .json({ error: "Помилка при отриманні статусів", details: err.message });
+    res.status(500).json({
+      error: "Помилка при отриманні статусів",
+      details: err.message,
+    });
   } finally {
     const ms = Date.now() - startedAt;
     console.info(`🛈 [${id}] ⏹  getStatuses END (took ${ms} ms)`);

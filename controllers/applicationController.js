@@ -4,6 +4,7 @@ const jwt = require("jsonwebtoken");
 const { io } = require("../index"); // 📡 WebSocket
 
 // 🔧 Створення заявки з перевіркою дубля та зміною статусу ідеї
+// 🔧 Створення заявки з перевіркою дубля та зміною статусу ідеї
 const createApplication = async (req, res) => {
   try {
     const { user_id, title, content, idea_id, type } = req.body;
@@ -29,7 +30,7 @@ const createApplication = async (req, res) => {
       return res.status(409).json({ message: "Заявку вже створено для цієї ідеї." });
     }
 
-    const [newApplication] = await sequelize.query(
+    const result = await sequelize.query(
       `INSERT INTO applications (user_id, title, content, idea_id, type, status, created_at, updated_at)
        VALUES (:user_id, :title, :content, :idea_id, :type, 'draft', NOW(), NOW()) RETURNING *`,
       {
@@ -37,6 +38,8 @@ const createApplication = async (req, res) => {
         type: QueryTypes.INSERT,
       }
     );
+
+    const newApplication = Array.isArray(result) && Array.isArray(result[0]) ? result[0][0] : result[0];
 
     await sequelize.query(
       `UPDATE ideas SET status = 'applied', updated_at = NOW() WHERE id = :idea_id`,
@@ -46,7 +49,6 @@ const createApplication = async (req, res) => {
       }
     );
 
-    // 📡 WebSocket — повідомляємо про нову заявку
     io.emit("application_created", {
       idea_id,
       user_id,
@@ -60,6 +62,7 @@ const createApplication = async (req, res) => {
     res.status(500).json({ message: "Внутрішня помилка сервера" });
   }
 };
+
 
 // 📥 Отримання всіх заявок із повною інформацією про автора
 const getAllApplications = async (req, res) => {
