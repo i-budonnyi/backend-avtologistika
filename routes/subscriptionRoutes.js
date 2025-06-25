@@ -16,7 +16,7 @@ const controllers = {
 
 for (const [key, value] of Object.entries(controllers)) {
   if (typeof value !== "function") {
-    console.error(`❌ [ERROR] Контролер ${key} не є функцією (undefined або неправильний експорт).`);
+    console.error(`❌ [ERROR] Контролер ${key} не є фуttнкцією (undefined або неправильний експорт).`);
     process.exit(1);
   }
 }
