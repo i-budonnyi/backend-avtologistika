@@ -116,7 +116,7 @@ const getAllAmbassadors = async (req, res) => {
     res.status(200).json(data);
   } catch (error) {
     console.error("[getAllAmbassadors] ❌", error);
-    res.status(500).json({ message: "Помилка отримання амбасадорів", error });
+    res.status(500).json({ message: "Помилка отрмання амбасадорів", error });
   }
 };
 
