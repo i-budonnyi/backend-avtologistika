@@ -1,7 +1,6 @@
 ﻿const express = require("express");
 const router = express.Router();
 const ideaController = require("../controllers/ideaController");
-const authenticate = require("../middleware/auth"); // ✅ middleware
 
 console.log("[ideaRoutes] 📌 Ініціалізація маршрутів...");
 
@@ -11,26 +10,30 @@ const {
   updateIdeaStatus,
   getAllAmbassadors,
   getUserIdeas,
-  getIdeasByAmbassador
+  getIdeasByAmbassador,
+  getIdeaStatusById // ✅ Додано
 } = ideaController;
 
 // 🔹 Отримати всі ідеї (публічно)
 router.get("/", getAllIdeas);
 
 // 🔹 Отримати ідеї певного користувача (авторизація)
-router.get("/user-ideas", authenticate, getUserIdeas);
+router.get("/user-ideas", require("../middleware/auth"), getUserIdeas);
 
 // 🔹 Отримати ідеї, де певного амбасадора обрано іншими (публічно)
 router.get("/selected-ambassador-ideas/:ambassadorId", getIdeasByAmbassador);
 
 // 🔹 Створити ідею (авторизація)
-router.post("/", authenticate, createIdea);
+router.post("/", require("../middleware/auth"), createIdea);
 
 // 🔹 Оновити статус ідеї (авторизація)
-router.put("/:id", authenticate, updateIdeaStatus);
+router.put("/:id", require("../middleware/auth"), updateIdeaStatus);
 
 // 🔹 Отримати список амбасадорів (публічно)
 router.get("/ambassadors", getAllAmbassadors);
+
+// ✅ 🔹 Отримати статус ідеї за ID (публічно)
+router.get("/status/:id", getIdeaStatusById);
 
 console.log("[ideaRoutes] ✅ Маршрути підключені успішно.");
 module.exports = router;

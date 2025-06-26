@@ -120,11 +120,36 @@ const getAllAmbassadors = async (req, res) => {
   }
 };
 
+// ✅ Отримати статус ідеї за ID
+const getIdeaStatusById = async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    const [result] = await sequelize.query(
+      `SELECT status FROM ideas WHERE id = :id LIMIT 1`,
+      {
+        replacements: { id },
+        type: QueryTypes.SELECT
+      }
+    );
+
+    if (!result) {
+      return res.status(404).json({ message: "Ідею не знайдено" });
+    }
+
+    res.status(200).json({ status: result.status });
+  } catch (error) {
+    console.error("[getIdeaStatusById] ❌", error);
+    res.status(500).json({ message: "Помилка отримання статусу ідеї", error: error.message });
+  }
+};
+
 module.exports = {
   getAllIdeas,
   createIdea,
   getUserIdeas,
   updateIdeaStatus,
   getIdeasByAmbassador,
-  getAllAmbassadors
+  getAllAmbassadors,
+  getIdeaStatusById // 👈 Додано нову функцію
 };
