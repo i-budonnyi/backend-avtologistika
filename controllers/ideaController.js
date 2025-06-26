@@ -30,27 +30,19 @@ const createIdea = async (req, res) => {
   console.log("📝 createIdea ->", { user_id, ambassador_id, title, description });
 
   try {
-    await sequelize.query(
+    const [result] = await sequelize.query(
       `INSERT INTO ideas (user_id, ambassador_id, title, description, status, created_at, updated_at)
-       VALUES (:user_id, :ambassador_id, :title, :description, 'pending', NOW(), NOW())`,
+       VALUES (:user_id, :ambassador_id, :title, :description, 'pending', NOW(), NOW())
+       RETURNING *;`,
       {
         replacements: { user_id, ambassador_id, title, description },
         type: QueryTypes.INSERT
       }
     );
 
-    res.status(201).json({ message: "Ідея успішно створена" });
+    res.status(201).json({ message: "Ідея успішно створена", idea: result });
   } catch (error) {
     console.error("[createIdea] ❌", error);
-
-    if (error.message.includes(`record "new" has no field "author_id"`)) {
-      return res.status(500).json({
-        message: "Помилка при створенні ідеї",
-        error: "Поле 'author_id' не існує в базі або в RETURNING. Перевірте INSERT і таблицю 'ideas'",
-        hint: "Можливо, ви використовуєте RETURNING new.* замість RETURNING *"
-      });
-    }
-
     res.status(500).json({ message: "Помилка при створенні ідеї", error: error.message });
   }
 };
