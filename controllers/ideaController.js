@@ -43,19 +43,16 @@ const createIdea = async (req, res) => {
   } catch (error) {
     console.error("[createIdea] ❌", error);
 
-    // 🔍 Додаткове розпізнавання конкретної помилки
     if (error.message.includes(`record "new" has no field "author_id"`)) {
       return res.status(500).json({
         message: "Помилка при створенні ідеї",
         error: "Поле 'author_id' не існує в базі або в RETURNING. Перевірте INSERT і таблицю 'ideas'",
-        hint: "Можливо, ви використовуєте RETURNING new.* замість RETURNING *",
+        hint: "Можливо, ви використовуєте RETURNING new.* замість RETURNING *"
       });
     }
 
     res.status(500).json({ message: "Помилка при створенні ідеї", error: error.message });
   }
-};
-
 };
 
 // ✅ Ідеї користувача
