@@ -1,41 +1,71 @@
-/* controllers/notificationController.js */
 const { QueryTypes } = require("sequelize");
-const sequelize     = require("../config/db"); // переконайся, що саме тут у тебе ініціалізований Sequelize
+const sequelize      = require("../config/db");
+const { io }         = require("../index"); // Підключення до socket.io
 
-/**
- * GET /api/notifications/:user_id
- * Повертає всі сповіщення, адресовані конкретному користувачу
- * + глобальні (`target = 'all'`).
- */
-exports.getByUser = async (req, res) => {
-  /* 1. Валідуємо та нормалізуємо user_id */
-  const rawId  = req.params.user_id;          // те, що прийшло в URL
-  const userId = Number(rawId);               // приводимо до числа
-
-  if (!userId || Number.isNaN(userId)) {
-    return res.status(400).json({ message: "Невалідний ID користувача" });
-  }
-
-  /* 2. Дістаємо сповіщення */
+// Функція створення сповіщення в БД
+const createNotification = async ({ userId, message, target = null }) => {
   try {
-    const notifications = await sequelize.query(
-      `
-        SELECT *
-        FROM notifications
-        WHERE user_id = :uid
-           OR target   = 'all'
-        ORDER BY created_at DESC
-      `,
+    const [result] = await sequelize.query(
+      `INSERT INTO notifications (user_id, message, target, created_at)
+       VALUES (:userId, :message, :target, NOW())
+       RETURNING *`,
       {
-        replacements: { uid: userId },
-        type: QueryTypes.SELECT
+        replacements: { userId, message, target },
+        type: QueryTypes.INSERT,
       }
     );
 
-    return res.status(200).json(notifications);
+    const notification = result[0];
+    console.log("✅ Створено сповіщення:", notification);
+
+    // Надсилаємо через WebSocket
+    if (target === "all") {
+      io.emit("globalNotification", notification);
+    } else {
+      io.to(`${userId}`).emit("notification", notification);
+    }
   } catch (err) {
-    /* 3. Логуємо та відправляємо помилку */
-    console.error("🛑 [getByUser] DB error:", err);
-    return res.status(500).json({ message: "Помилка при отриманні сповіщень" });
+    console.error("❌ createNotification error:", err.message);
   }
 };
+
+// Перевірка нових активностей
+const checkBlogActivityAndNotify = async () => {
+  try {
+    // Приклад: знайти всі нові блоги, створені за останні 60 секунд
+    const blogs = await sequelize.query(
+      `SELECT b.id, b.title, b.author_id, u.first_name
+       FROM blog b
+       JOIN users u ON u.id = b.author_id
+       WHERE b.created_at >= NOW() - INTERVAL '1 minute'`,
+      { type: QueryTypes.SELECT }
+    );
+
+    for (const blog of blogs) {
+      const message = `🆕 ${blog.first_name} створив новий блог: "${blog.title}"`;
+      await createNotification({ userId: blog.author_id, message, target: "all" });
+    }
+
+    // Аналогічно для коментарів:
+    const comments = await sequelize.query(
+      `SELECT c.id, c.user_id, u.first_name, c.content
+       FROM comments c
+       JOIN users u ON u.id = c.user_id
+       WHERE c.created_at >= NOW() - INTERVAL '1 minute'`,
+      { type: QueryTypes.SELECT }
+    );
+
+    for (const comment of comments) {
+      const message = `💬 ${comment.first_name} залишив коментар: "${comment.content}"`;
+      await createNotification({ userId: comment.user_id, message, target: "all" });
+    }
+
+    // І так далі для лайків, підписок, проблем тощо...
+
+  } catch (err) {
+    console.error("❌ checkBlogActivityAndNotify error:", err.message);
+  }
+};
+
+// Запускаємо цикл перевірки кожні 60 сек
+setInterval(checkBlogActivityAndNotify, 60_000);
