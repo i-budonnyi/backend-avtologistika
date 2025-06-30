@@ -12,7 +12,6 @@ try {
 
 const JWT_SECRET = process.env.JWT_SECRET || "your_secret_key";
 
-// ✅ Витяг user_id з JWT
 const getUserIdFromToken = (req) => {
   try {
     const authHeader = req.headers.authorization;
@@ -26,50 +25,50 @@ const getUserIdFromToken = (req) => {
   }
 };
 
-// ✅ Отримати всі унікальні підписки користувача
 const getSubscriptions = async (req, res) => {
   const user_id = getUserIdFromToken(req);
   if (!user_id) return res.status(401).json({ error: "Необхідно авторизуватися." });
 
   const sql = `
-    SELECT DISTINCT ON (entry_id) *
-    FROM (
-      SELECT 
-        s.id AS subscription_id,
-        COALESCE(s.blog_id, s.idea_id, s.problem_id, s.post_id) AS entry_id,
-        CASE
-          WHEN s.post_id IS NOT NULL THEN po.title
-          WHEN s.blog_id IS NOT NULL THEN b.title
-          WHEN s.idea_id IS NOT NULL THEN i.title
-          WHEN s.problem_id IS NOT NULL THEN p.title
-          ELSE 'Без назви'
-        END AS title,
-        CASE
-          WHEN s.post_id IS NOT NULL THEN po.description
-          WHEN s.blog_id IS NOT NULL THEN b.description
-          WHEN s.idea_id IS NOT NULL THEN i.description
-          WHEN s.problem_id IS NOT NULL THEN p.description
-          ELSE 'Без опису'
-        END AS description,
-        CASE
-          WHEN s.post_id IS NOT NULL THEN po.status
-          WHEN s.idea_id IS NOT NULL THEN i.status
-          WHEN s.problem_id IS NOT NULL THEN p.status
-          ELSE 'N/A'
-        END AS status,
-        COALESCE(po.created_at, b.created_at, i.created_at, p.created_at) AS created_at,
-        COALESCE(po.user_id, b.user_id, i.user_id, p.user_id) AS author_id,
-        u.first_name AS author_first_name,
-        u.last_name AS author_last_name
-      FROM subscriptions s
-      LEFT JOIN posts po ON s.post_id = po.id
-      LEFT JOIN blog b ON s.blog_id = b.id
-      LEFT JOIN ideas i ON s.idea_id = i.id
-      LEFT JOIN problems p ON s.problem_id = p.id
-      LEFT JOIN users u ON u.id = COALESCE(po.user_id, b.user_id, i.user_id, p.user_id)
-      WHERE s.user_id = :user_id
-    ) AS entries
-    ORDER BY entry_id, created_at DESC
+    SELECT s.id AS subscription_id, s.blog_id AS entry_id, 'blog' AS entry_type, 
+           b.title, b.description, b.status, b.created_at,
+           u.id AS author_id, u.first_name, u.last_name
+    FROM subscriptions s
+    JOIN blog b ON s.blog_id = b.id
+    LEFT JOIN users u ON b.user_id = u.id
+    WHERE s.user_id = :user_id AND s.blog_id IS NOT NULL
+
+    UNION ALL
+
+    SELECT s.id, s.idea_id, 'idea', 
+           i.title, i.description, i.status, i.created_at,
+           u.id, u.first_name, u.last_name
+    FROM subscriptions s
+    JOIN ideas i ON s.idea_id = i.id
+    LEFT JOIN users u ON i.user_id = u.id
+    WHERE s.user_id = :user_id AND s.idea_id IS NOT NULL
+
+    UNION ALL
+
+    SELECT s.id, s.problem_id, 'problem', 
+           p.title, p.description, p.status, p.created_at,
+           u.id, u.first_name, u.last_name
+    FROM subscriptions s
+    JOIN problems p ON s.problem_id = p.id
+    LEFT JOIN users u ON p.user_id = u.id
+    WHERE s.user_id = :user_id AND s.problem_id IS NOT NULL
+
+    UNION ALL
+
+    SELECT s.id, s.post_id, 'post', 
+           po.title, po.description, po.status, po.created_at,
+           u.id, u.first_name, u.last_name
+    FROM subscriptions s
+    JOIN posts po ON s.post_id = po.id
+    LEFT JOIN users u ON po.user_id = u.id
+    WHERE s.user_id = :user_id AND s.post_id IS NOT NULL
+
+    ORDER BY created_at DESC
   `;
 
   try {
@@ -77,14 +76,13 @@ const getSubscriptions = async (req, res) => {
       replacements: { user_id },
       type: QueryTypes.SELECT,
     });
-    res.status(200).json(subscriptions); // 🔁 Тепер просто масив, як ти просив
+    res.status(200).json(subscriptions);
   } catch (err) {
     console.error("❌ SQL помилка:", err.message);
     res.status(500).json({ error: "Помилка при отриманні підписок", details: err.message });
   }
 };
 
-// ✅ Підписка
 const subscribeToEntry = async (req, res) => {
   const user_id = getUserIdFromToken(req);
   if (!user_id) return res.status(401).json({ error: "Необхідно авторизуватися." });
@@ -149,7 +147,6 @@ const subscribeToEntry = async (req, res) => {
   }
 };
 
-// ✅ Відписка
 const unsubscribeFromEntry = async (req, res) => {
   const user_id = getUserIdFromToken(req);
   if (!user_id) return res.status(401).json({ error: "Необхідно авторизуватися." });
