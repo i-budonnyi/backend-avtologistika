@@ -1,8 +1,10 @@
+// controllers/notificationController.js
+
 const { QueryTypes } = require("sequelize");
 const sequelize      = require("../config/db");
 const { io }         = require("../index"); // Підключення до socket.io
 
-// Функція створення сповіщення в БД
+// 📬 Створення сповіщення в базі та надсилання через сокет
 const createNotification = async ({ userId, message, target = null }) => {
   try {
     const [result] = await sequelize.query(
@@ -18,7 +20,7 @@ const createNotification = async ({ userId, message, target = null }) => {
     const notification = result[0];
     console.log("✅ Створено сповіщення:", notification);
 
-    // Надсилаємо через WebSocket
+    // 🔔 Відправка через WebSocket
     if (target === "all") {
       io.emit("globalNotification", notification);
     } else {
@@ -29,10 +31,10 @@ const createNotification = async ({ userId, message, target = null }) => {
   }
 };
 
-// Перевірка нових активностей
+// 🔍 Пошук нових активностей (блогів, коментарів тощо)
 const checkBlogActivityAndNotify = async () => {
   try {
-    // Приклад: знайти всі нові блоги, створені за останні 60 секунд
+    // 📝 Нові блоги
     const blogs = await sequelize.query(
       `SELECT b.id, b.title, b.author_id, u.first_name
        FROM blog b
@@ -46,7 +48,7 @@ const checkBlogActivityAndNotify = async () => {
       await createNotification({ userId: blog.author_id, message, target: "all" });
     }
 
-    // Аналогічно для коментарів:
+    // 💬 Нові коментарі
     const comments = await sequelize.query(
       `SELECT c.id, c.user_id, u.first_name, c.content
        FROM comments c
@@ -60,12 +62,17 @@ const checkBlogActivityAndNotify = async () => {
       await createNotification({ userId: comment.user_id, message, target: "all" });
     }
 
-    // І так далі для лайків, підписок, проблем тощо...
+    // 🛠 Можна розширити аналогічно на лайки, підписки, проблеми...
 
   } catch (err) {
     console.error("❌ checkBlogActivityAndNotify error:", err.message);
   }
 };
 
-// Запускаємо цикл перевірки кожні 60 сек
+// ⏱ Запуск перевірки кожні 60 секунд
 setInterval(checkBlogActivityAndNotify, 60_000);
+
+module.exports = {
+  createNotification,
+  checkBlogActivityAndNotify,
+};
